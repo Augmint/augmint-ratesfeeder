@@ -1,0 +1,33 @@
+{
+  "name": "augmint-ratesfeeder",
+  "version": "0.1.0",
+  "description": "Rates feeder (Oracle) for Augmint Contracts",
+  "main": "truffle.js",
+  "directories": {
+    "doc": "docs",
+    "test": "test"
+  },
+  "dependencies": {
+    "fetch": "^1.1.0",
+    "truffle-contract": "^3.0.3",
+    "web3": "^1.0.0-beta.30"
+  },
+  "devDependencies": {},
+  "scripts": {
+    "start": "node ./src/RatesFeeder.js",
+    "test": "test"
+  },
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/Augmint/augmint-ratesfeeder.git"
+  },
+  "keywords": [
+    "solidity smart-contracts solidity-contracts dapp finance money cryptocurrencies cryptocurrency A-EUR augmint rates feeder oracle oracles"
+  ],
+  "author": "Peter Kolcza",
+  "license": "GPL-3.0",
+  "bugs": {
+    "url": "https://github.com/Augmint/augmint-ratesfeeder/issues"
+  },
+  "homepage": "https://github.com/Augmint/augmint-ratesfeeder#readme"
+}
