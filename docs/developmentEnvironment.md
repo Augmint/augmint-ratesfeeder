@@ -37,25 +37,15 @@ _Note: It is recommended to use PowerShell (win+X => powershell)_
    nvm install 8.5.0
    nvm use 8.5.0
    ```
-1. Truffle Ethereum Framework:
-   ```
-   npm install truffle
-   ```
-1. [Ganache GUI (TestRPC)](http://truffleframework.com/ganache/) or from command line:
-   ```
-   npm install -g ganache-cli
-   ```
-   _Config details in runganche.bat_
-   _TODO: configure without --global option_
 
 1. Get the source code:
     ```
     git clone https://github.com/Augmint/augmint-ratesfeeder.git
     cd augmint-ratesfeeder
-    npm install
+    yarn install  # or npm install
     git clone https://github.com/Augmint/augmint-contracts.git
     cd augmint-contracts
-    npm install
+    yarn install  # or npm install
     ```
 
     _If python already installed but npm does not find it: npm --add-python-to-path='true' --debug install --global windows-build-tools (as administrator)_
@@ -66,7 +56,7 @@ _Note: It is recommended to use PowerShell (win+X => powershell)_
 
 ```
 git pull
-npm install # if there were any node package changes in packages.json
+yarn install # if there were any node package changes in packages.json
 ```
 
 ### 2. Setup augmint smartcontracts
@@ -83,5 +73,5 @@ truffle test
 ### 4. Feeding
 
 ```
-npm start
+yarn start     # or npm start
 ```
