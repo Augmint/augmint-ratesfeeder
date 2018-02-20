@@ -8,15 +8,15 @@
 * ...
 */
 
-var fetch = require('fetch')
-var AugmintContracts = require('../augmint-contracts/build/contracts/Rates.json')
-var contract = require('truffle-contract')
+const fetch = require('fetch')
+const AugmintContracts = require('../augmint-contracts/build/contracts/Rates.json')
+const contract = require('truffle-contract')
 
-var Web3 = require('web3');
-var web3 = new Web3(new Web3.providers.HttpProvider('http://localhost:8545'));
+const Web3 = require('web3');
+const web3 = new Web3(new Web3.providers.HttpProvider('http://localhost:8545'));
 
 // Truffle abstraction to interact with our deployed contract
-var augmintRates = contract(AugmintContracts)
+const augmintRates = contract(AugmintContracts)
 augmintRates.setProvider(web3.currentProvider)
 
 
@@ -42,7 +42,7 @@ web3.eth.getAccounts((err, accounts) => {
         console.log("Current ETHEUR price is on the Kraken exchane: " + price);
         // Send data back contract on-chain
         process.stdout.write("Sending to the Augmint Contracts using Rates.setRate() ... ");
-        augmintRatesInstance.setRate("EUR", price*1000, {from: accounts[0]});
+        augmintRatesInstance.setRate("EUR", price*10000, {from: accounts[0]});
         console.log("done.");
       })
 
