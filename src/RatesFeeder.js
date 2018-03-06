@@ -14,16 +14,16 @@ const AugmintToken = require("../augmint-contracts/build/contracts/TokenAEur.jso
 const contract = require("truffle-contract");
 
 let decimalsDiv;
-let accounts;
 let augmintRatesInstance;
 let augmintTokenInstance;
+const account = process.env.ETHEREUM_ACCOUNT;
 
 module.exports = {
     get decimalsDiv() {
         return decimalsDiv;
     },
-    get accounts() {
-        return accounts;
+    get account() {
+        return account;
     },
     get augmintRatesInstance() {
         return augmintRatesInstance;
@@ -39,6 +39,10 @@ module.exports = {
 };
 
 const web3 = new Web3(new Web3.providers.HttpProvider("http://localhost:8545"));
+
+if (!web3.utils.isAddress(account)) {
+    throw new Error("Invalid ETHEREUM_ACCOUNT: " + account);
+}
 
 // Truffle abstraction to interact with our deployed contract
 const augmintRates = contract(AugmintRates);
@@ -115,31 +119,9 @@ async function getPrice(CCY) {
     }
 }
 
-// helper function from web/ethHelper.js.
-function asyncGetAccounts(web3) {
-    return new Promise(function(resolve, reject) {
-        web3.eth.getAccounts((error, accounts) => {
-            if (error) {
-                reject(new Error("Can't get account list from web3 (asyncGetAccounts).\n " + error));
-            } else {
-                if (!web3.utils.isAddress(accounts[0])) {
-                    reject(
-                        new Error(
-                            "Can't get default account from web3 (asyncGetAccounts)." +
-                                "\nIf you are using Metamask make sure it's unlocked with your password."
-                        )
-                    );
-                }
-                resolve(accounts);
-            }
-        });
-    });
-}
-
 async function updatePrice(CCY) {
     try {
-        [accounts, augmintRatesInstance, augmintTokenInstance] = await Promise.all([
-            asyncGetAccounts(web3),
+        [augmintRatesInstance, augmintTokenInstance] = await Promise.all([
             augmintRates.deployed(),
             augmintToken.deployed()
         ]);
@@ -149,7 +131,7 @@ async function updatePrice(CCY) {
 
         // Send data back contract on-chain
         //process.stdout.write("Sending to the Augmint Contracts using Rates.setRate() ... "); // should be logged into a file
-        augmintRatesInstance.setRate(CCY, price * decimalsDiv, { from: accounts[0] });
+        augmintRatesInstance.setRate(CCY, price * decimalsDiv, { from: account });
         const storedRates = await augmintRatesInstance.rates(CCY);
         //console.log(storedRates[0].c[0]/100+ " done."); // Should we wait until the price is set as we wanted? // should be logged into a file
     } catch (err) {
