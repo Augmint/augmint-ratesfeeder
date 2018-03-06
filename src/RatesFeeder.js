@@ -6,7 +6,7 @@
 */
 
 // config paramaters from .env for exchange data (real exchange rates and simulated rates)
-require("dotenv").config();
+require("./env.js");
 const Web3 = require("web3");
 const fetch = require("fetch");
 const AugmintRates = require("../augmint-contracts/build/contracts/Rates.json");
