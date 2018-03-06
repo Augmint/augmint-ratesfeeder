@@ -9,8 +9,8 @@
 require("./env.js");
 const Web3 = require("web3");
 const fetch = require("fetch");
-const AugmintRates = require("../augmint-contracts/build/contracts/Rates.json");
-const AugmintToken = require("../augmint-contracts/build/contracts/TokenAEur.json");
+const AugmintRates = require("./contractsBuild/Rates.json");
+const AugmintToken = require("./contractsBuild/TokenAEur.json");
 const contract = require("truffle-contract");
 
 let decimalsDiv;
