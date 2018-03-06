@@ -1,11 +1,10 @@
-const assert = require('assert');
-const ratesFeeder = require('../src/RatesFeeder.js');
+const assert = require("assert");
+const ratesFeeder = require("../src/RatesFeeder.js");
 
-describe('RatesFeeder: real exchange rate tests', function () {
-
-    it('Kraken interface should return a number', async function () {
+describe("RatesFeeder: real exchange rate tests", function() {
+    it("Kraken interface should return a number", async function() {
         const price = await ratesFeeder.getKrakenPrice("EUR");
-        assert.equal('number', typeof price);
+        assert.equal("number", typeof price);
     });
     /*
     it('BitStamp interface should return a number', async function () {
@@ -13,16 +12,15 @@ describe('RatesFeeder: real exchange rate tests', function () {
         assert.equal('number', typeof price);
     });
     */
-    it('Gdax interface should return a number', async function () {
+    it("Gdax interface should return a number", async function() {
         const price = await ratesFeeder.getGdaxPrice("EUR");
-        assert.equal('number', typeof price);
+        assert.equal("number", typeof price);
     });
 
-    it('set on-chain rate and should be the same', async function () {
+    it("set on-chain rate and should be the same", async function() {
         const price = await ratesFeeder.getPrice("EUR");
         await ratesFeeder.updatePrice("EUR");
         const storedRate = await ratesFeeder.augmintRatesInstance.rates("EUR");
-        assert.equal( parseInt(price *ratesFeeder.decimalsDiv),storedRate[0].c[0]);
+        assert.equal(parseInt(price * ratesFeeder.decimalsDiv), storedRate[0].c[0]);
     });
-
 });
