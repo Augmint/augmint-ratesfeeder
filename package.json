@@ -27,7 +27,7 @@
     "keywords": [
         "solidity smart-contracts solidity-contracts dapp finance money cryptocurrencies cryptocurrency A-EUR augmint rates feeder oracle oracles"
     ],
-    "author": "Peter Kolcza",
+    "author": "Augmint",
     "license": "GPL-3.0",
     "bugs": {
         "url": "https://github.com/Augmint/augmint-ratesfeeder/issues"
