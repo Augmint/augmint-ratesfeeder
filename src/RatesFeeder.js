@@ -146,15 +146,12 @@ async function updatePrice(CCY) {
         const price = await getPrice(CCY);
         const decimals = await augmintTokenInstance.decimals();
         decimalsDiv = 10 ** decimals;
-        //module.exports.decimalsDiv = decimalsDiv;
 
         // Send data back contract on-chain
         //process.stdout.write("Sending to the Augmint Contracts using Rates.setRate() ... "); // should be logged into a file
         augmintRatesInstance.setRate(CCY, price * decimalsDiv, { from: accounts[0] });
         const storedRates = await augmintRatesInstance.rates(CCY);
         //console.log(storedRates[0].c[0]/100+ " done."); // Should we wait until the price is set as we wanted? // should be logged into a file
-
-        module.exports.augmintRatesInstance = augmintRatesInstance; // exports for testing
     } catch (err) {
         console.log(err);
     }
