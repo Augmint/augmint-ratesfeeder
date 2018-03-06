@@ -38,5 +38,3 @@ dotenvFiles.forEach(dotenvFile => {
         // });
     }
 });
-
-console.log(process.env.NODE_ENV, process.env.KRAKEN_URL);
