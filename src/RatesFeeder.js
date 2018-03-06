@@ -13,6 +13,7 @@ const AugmintRates = require("./contractsBuild/Rates.json");
 const AugmintToken = require("./contractsBuild/TokenAEur.json");
 const contract = require("truffle-contract");
 
+let web3;
 let decimalsDiv;
 let augmintRatesInstance;
 let augmintTokenInstance;
@@ -31,6 +32,7 @@ module.exports = {
     get augmintTokenInstance() {
         return augmintTokenInstance;
     },
+    init,
     getKrakenPrice,
     getBitstampPrice,
     getGdaxPrice,
@@ -38,34 +40,48 @@ module.exports = {
     updatePrice
 };
 
+async function init() {
+    switch (process.env.PROVIDER_TYPE) {
+    case "http_local": {
+        web3 = new Web3(new Web3.providers.HttpProvider(process.env.HTTP_LOCAL_URL));
+        break;
+    }
+    case "http_infura": {
+        if (!process.env.INFURA_API_KEY) {
+            throw new Error("PROVIDER_TYPE is " + process.env.PROVIDER_TYPE + " but INFURA_API_KEY is not set");
+        }
+        web3 = new Web3(new Web3.providers.HttpProvider(process.env.HTTP_INFURA_URL + process.env.INFURA_API_KEY));
+        break;
+    }
+    default:
+        throw new Error(process.env.PROVIDER_TYPE + " is not supported yet");
+    }
 
-const web3 = new Web3(new Web3.providers.HttpProvider(process.env.HTTP_PROVIDER_URL));
+    //dirty hack for web3@1.0.0 support for localhost testrpc, see https://github.com/trufflesuite/truffle-contract/issues/56#issuecomment-331084530
+    if (typeof web3.currentProvider.sendAsync !== "function") {
+        web3.currentProvider.sendAsync = function() {
+            return web3.currentProvider.send.apply(web3.currentProvider, arguments);
+        };
+    }
 
-//dirty hack for web3@1.0.0 support for localhost testrpc, see https://github.com/trufflesuite/truffle-contract/issues/56#issuecomment-331084530
-if (typeof web3.currentProvider.sendAsync !== "function") {
-    web3.currentProvider.sendAsync = function() {
-        return web3.currentProvider.send.apply(web3.currentProvider, arguments);
-    };
-}
+    if (!web3.utils.isAddress(account)) {
+        throw new Error("Invalid ETHEREUM_ACCOUNT: " + account);
+    }
+    web3.eth.defaultAccount = account;
 
-// Truffle abstraction to interact with our deployed contract
-const augmintRates = contract(AugmintRates);
-const augmintToken = contract(AugmintToken);
+    // Truffle abstraction to interact with our deployed contract
+    const augmintRates = contract(AugmintRates);
+    const augmintToken = contract(AugmintToken);
 
-// TODO: move all connection logic to a separate component: connection.js or ethereumConnection.js?
-const networkId = web3.eth.net.getId().then(networkId => {
+    // TODO: move all connection logic to a separate component: connection.js or ethereumConnection.js?
+    const networkId = await web3.eth.net.getId();
+
     augmintRates.setProvider(web3.currentProvider);
     augmintToken.setProvider(web3.currentProvider);
     augmintRates.setNetwork(networkId);
     augmintToken.setNetwork(networkId);
     augmintRatesInstance = augmintRates.at(augmintRates.address);
     augmintTokenInstance = augmintToken.at(augmintToken.address);
-
-    return networkId;
-});
-
-if (!web3.utils.isAddress(account)) {
-    throw new Error("Invalid ETHEREUM_ACCOUNT: " + account);
 }
 
 // get ETH/CCY price  from Kraken Exchange
