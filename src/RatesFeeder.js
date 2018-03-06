@@ -137,7 +137,14 @@ async function updatePrice(CCY) {
 
         // Send data back contract on-chain
         //process.stdout.write("Sending to the Augmint Contracts using Rates.setRate() ... "); // should be logged into a file
-        augmintRatesInstance.setRate(CCY, price * decimalsDiv, { from: account });
+        const tx = await augmintRatesInstance.setRate(CCY, price * decimalsDiv, { from: account });
+        // TODO: chain .on callbacks to log submitted but not mined txhash then returned tx on mined event
+        // TODO: check tx status and/or RateChanged event + args in args.logs[0]
+        console.log(
+            `updatePrice():  augmintRatesInstance.setRate(${CCY}, ${price *
+                decimalsDiv}, {from: ${account}}) result:\n${JSON.stringify(tx, null, 3)}`
+        );
+
         const storedRates = await augmintRatesInstance.rates(CCY);
         //console.log(storedRates[0].c[0]/100+ " done."); // Should we wait until the price is set as we wanted? // should be logged into a file
     } catch (err) {
