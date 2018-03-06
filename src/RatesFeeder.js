@@ -38,25 +38,35 @@ module.exports = {
     updatePrice
 };
 
-const web3 = new Web3(new Web3.providers.HttpProvider("http://localhost:8545"));
-const web3 = new Web3(new Web3.providers.HttpProvider(process.env.HTTP_PROVIDER_URL));
 
-if (!web3.utils.isAddress(account)) {
-    throw new Error("Invalid ETHEREUM_ACCOUNT: " + account);
-}
+const web3 = new Web3(new Web3.providers.HttpProvider(process.env.HTTP_PROVIDER_URL));
 
 // Truffle abstraction to interact with our deployed contract
 const augmintRates = contract(AugmintRates);
 const augmintToken = contract(AugmintToken);
-augmintRates.setProvider(web3.currentProvider);
-augmintToken.setProvider(web3.currentProvider);
 
-// Dirty hack for web3@1.0.0 support for localhost testrpc
-// see https://github.com/trufflesuite/truffle-contract/issues/56#issuecomment-331084530
-if (typeof augmintRates.currentProvider.sendAsync !== "function") {
-    augmintRates.currentProvider.sendAsync = function() {
-        return augmintRates.currentProvider.send.apply(augmintRates.currentProvider, arguments);
-    };
+// TODO: move all connection logic to a separate component: connection.js or ethereumConnection.js?
+const networkId = web3.eth.net.getId().then(networkId => {
+    augmintRates.setProvider(web3.currentProvider);
+    augmintToken.setProvider(web3.currentProvider);
+    augmintRates.setNetwork(networkId);
+    augmintToken.setNetwork(networkId);
+    augmintRatesInstance = augmintRates.at(augmintRates.address);
+    augmintTokenInstance = augmintToken.at(augmintToken.address);
+
+    // Dirty hack for web3@1.0.0 support for localhost testrpc
+    // see https://github.com/trufflesuite/truffle-contract/issues/56#issuecomment-331084530
+    if (typeof augmintRates.currentProvider.sendAsync !== "function") {
+        augmintRates.currentProvider.sendAsync = function() {
+            return augmintRates.currentProvider.send.apply(augmintRates.currentProvider, arguments);
+        };
+    }
+
+    return networkId;
+});
+
+if (!web3.utils.isAddress(account)) {
+    throw new Error("Invalid ETHEREUM_ACCOUNT: " + account);
 }
 
 // get ETH/CCY price  from Kraken Exchange
@@ -122,10 +132,6 @@ async function getPrice(CCY) {
 
 async function updatePrice(CCY) {
     try {
-        [augmintRatesInstance, augmintTokenInstance] = await Promise.all([
-            augmintRates.deployed(),
-            augmintToken.deployed()
-        ]);
         const price = await getPrice(CCY);
         const decimals = await augmintTokenInstance.decimals();
         decimalsDiv = 10 ** decimals;
