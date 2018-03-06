@@ -5,6 +5,14 @@
 * ...
 */
 
+// config paramaters from .env for exchange data (real exchange rates and simulated rates)
+require("dotenv").config();
+const Web3 = require("web3");
+const fetch = require("fetch");
+const AugmintRates = require("../augmint-contracts/build/contracts/Rates.json");
+const AugmintToken = require("../augmint-contracts/build/contracts/TokenAEur.json");
+const contract = require("truffle-contract");
+
 let decimalsDiv;
 let accounts;
 let augmintRatesInstance;
@@ -30,15 +38,6 @@ module.exports = {
     updatePrice
 };
 
-const fetch = require("fetch");
-const AugmintRates = require("../augmint-contracts/build/contracts/Rates.json");
-const AugmintToken = require("../augmint-contracts/build/contracts/TokenAEur.json");
-const contract = require("truffle-contract");
-
-// config paramaters for exchange data (real exchange rates and simulated rates)
-require("dotenv").config();
-
-const Web3 = require("web3");
 const web3 = new Web3(new Web3.providers.HttpProvider("http://localhost:8545"));
 
 // Truffle abstraction to interact with our deployed contract
