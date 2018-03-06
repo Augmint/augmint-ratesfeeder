@@ -39,6 +39,7 @@ module.exports = {
 };
 
 const web3 = new Web3(new Web3.providers.HttpProvider("http://localhost:8545"));
+const web3 = new Web3(new Web3.providers.HttpProvider(process.env.HTTP_PROVIDER_URL));
 
 if (!web3.utils.isAddress(account)) {
     throw new Error("Invalid ETHEREUM_ACCOUNT: " + account);
