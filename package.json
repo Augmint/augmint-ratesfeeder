@@ -8,7 +8,8 @@
         "test": "test"
     },
     "dependencies": {
-        "config": "1.30.0",
+        "cross-env": "5.1.3",
+        "dotenv": "5.0.1",
         "fetch": "1.1.0",
         "truffle-contract": "3.0.3",
         "web3": "1.0.0-beta.30"
@@ -17,8 +18,8 @@
         "mocha": "5.0.1"
     },
     "scripts": {
-        "start": "node ./src/runFeeder.js",
-        "test": "mocha --timeout 10000",
+        "start": "cross-env NODE_ENV=development node ./src/runFeeder.js",
+        "test": "cross-env NODE_ENV=test mocha --timeout 10000",
         "contracts:migrate": "cd augmint-contracts && yarn migrate",
         "ganache:run": "cd augmint-contracts && yarn ganache:run",
         "contracts:runmigrate": "cd augmint-contracts && yarn runmigrate"

@@ -5,10 +5,19 @@
 * ...
 */
 
+// config paramaters from .env for exchange data (real exchange rates and simulated rates)
+require("./env.js");
+const Web3 = require("web3");
+const fetch = require("fetch");
+const AugmintRates = require("../augmint-contracts/build/contracts/Rates.json");
+const AugmintToken = require("../augmint-contracts/build/contracts/TokenAEur.json");
+const contract = require("truffle-contract");
+
 let decimalsDiv;
 let accounts;
 let augmintRatesInstance;
 let augmintTokenInstance;
+
 module.exports = {
     get decimalsDiv() {
         return decimalsDiv;
@@ -29,15 +38,6 @@ module.exports = {
     updatePrice
 };
 
-const fetch = require("fetch");
-const AugmintRates = require("../augmint-contracts/build/contracts/Rates.json");
-const AugmintToken = require("../augmint-contracts/build/contracts/TokenAEur.json");
-const contract = require("truffle-contract");
-
-// config paramaters for exchange data (real exchange rates and simulated rates)
-const config = require("config");
-
-const Web3 = require("web3");
 const web3 = new Web3(new Web3.providers.HttpProvider("http://localhost:8545"));
 
 // Truffle abstraction to interact with our deployed contract
@@ -57,7 +57,7 @@ if (typeof augmintRates.currentProvider.sendAsync !== "function") {
 // get ETH/CCY price  from Kraken Exchange
 function getKrakenPrice(CCY) {
     return new Promise(function(resolve, reject) {
-        fetch.fetchUrl(config.krakenURL + CCY, (error, m, b) => {
+        fetch.fetchUrl(process.env.KRAKEN_URL + CCY, (error, m, b) => {
             if (error) {
                 reject(new Error("Can't get price from Kraken.\n " + error));
             } else {
@@ -73,7 +73,7 @@ function getKrakenPrice(CCY) {
 // get ETH/CCY price  from BitStamp Exchange
 function getBitstampPrice(CCY) {
     return new Promise(function(resolve, reject) {
-        fetch.fetchUrl(config.bitstampURL + CCY, (error, m, b) => {
+        fetch.fetchUrl(process.env.BITSTAMP_URL + CCY, (error, m, b) => {
             if (error) {
                 reject(new Error("Can't get price from BitStamp.\n " + error));
             } else {
@@ -89,7 +89,7 @@ function getBitstampPrice(CCY) {
 // get ETH/CCY price  from BitStamp Exchange
 function getGdaxPrice(CCY) {
     return new Promise(function(resolve, reject) {
-        fetch.fetchUrl(config.gdaxURL + CCY + "/ticker", (error, m, b) => {
+        fetch.fetchUrl(process.env.GDAX_URL + CCY + "/ticker", (error, m, b) => {
             if (error) {
                 reject(new Error("Can't get price from BitStamp.\n " + error));
             } else {
