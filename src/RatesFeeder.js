@@ -5,6 +5,15 @@
 * ...
 */
 
+
+module.exports = {
+    getKrakenPrice,
+    getBitstampPrice,
+    getPrice,
+    updatePrice
+
+};
+
 const fetch = require('fetch')
 const AugmintRates = require('../augmint-contracts/build/contracts/Rates.json')
 const AugmintToken = require('../augmint-contracts/build/contracts/TokenAEur.json')
@@ -48,7 +57,6 @@ function getKrakenPrice(CCY){
         });
     });
 }
-module.exports.getKrakenPrice = getKrakenPrice;
 
 // get ETH/CCY price  from BitStamp Exchange
 function getBitstampPrice(CCY){
@@ -65,7 +73,6 @@ function getBitstampPrice(CCY){
         });
     });
 }
-module.exports.getBitstampPrice = getBitstampPrice;
 
 // fetch multiple price from different exchanges
 // filters out bad prices, errors, and returns with the avarage
@@ -79,7 +86,6 @@ async function getPrice(CCY){
         console.error(e); //
     }
 }
-module.exports.getPrice = getPrice;
 
 // helper function from web/ethHelper.js.
 function asyncGetAccounts(web3) {
@@ -130,5 +136,3 @@ async function updatePrice(CCY){
 
 
 updatePrice("EUR");
-module.exports.updatePrice = updatePrice;
-module.exports.getPrice = getPrice;
