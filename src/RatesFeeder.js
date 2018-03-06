@@ -5,7 +5,23 @@
 * ...
 */
 
+let decimalsDiv;
+let accounts;
+let augmintRatesInstance;
+let augmintTokenInstance;
 module.exports = {
+    get decimalsDiv() {
+        return decimalsDiv;
+    },
+    get accounts() {
+        return accounts;
+    },
+    get augmintRatesInstance() {
+        return augmintRatesInstance;
+    },
+    get augmintTokenInstance() {
+        return augmintTokenInstance;
+    },
     getKrakenPrice,
     getBitstampPrice,
     getGdaxPrice,
@@ -122,15 +138,15 @@ function asyncGetAccounts(web3) {
 
 async function updatePrice(CCY) {
     try {
-        const [accounts, augmintRatesInstance, augmintTokenInstance] = await Promise.all([
+        [accounts, augmintRatesInstance, augmintTokenInstance] = await Promise.all([
             asyncGetAccounts(web3),
             augmintRates.deployed(),
             augmintToken.deployed()
         ]);
         const price = await getPrice(CCY);
         const decimals = await augmintTokenInstance.decimals();
-        const decimalsDiv = 10 ** decimals;
-        module.exports.decimalsDiv = decimalsDiv;
+        decimalsDiv = 10 ** decimals;
+        //module.exports.decimalsDiv = decimalsDiv;
 
         // Send data back contract on-chain
         //process.stdout.write("Sending to the Augmint Contracts using Rates.setRate() ... "); // should be logged into a file
