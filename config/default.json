@@ -1,4 +1,5 @@
 {
   "krakenURL": "https://api.kraken.com/0/public/Ticker?pair=XETHZ",
-  "bitstampURL": "https://www.bitstamp.net/api/v2/ticker/ETH"
+  "bitstampURL": "https://www.bitstamp.net/api/v2/ticker/ETH",
+  "gdaxURL": "https://api.gdax.com//products/ETH-"
 }

@@ -9,6 +9,7 @@
 module.exports = {
     getKrakenPrice,
     getBitstampPrice,
+    getGdaxPrice,
     getPrice,
     updatePrice
 
@@ -74,14 +75,30 @@ function getBitstampPrice(CCY){
     });
 }
 
+// get ETH/CCY price  from BitStamp Exchange
+function getGdaxPrice(CCY){
+    return new Promise(function(resolve, reject) {
+        fetch.fetchUrl(config.gdaxURL + CCY + "/ticker", (error, m, b) => {
+            if (error){
+                reject(new Error("Can't get price from BitStamp.\n " + error));
+            }else{
+                const bitstampJson = JSON.parse(b.toString());
+                const price = bitstampJson.price;  // type should be checked
+                //console.log("Current ETHEUR price is on the BitStamp exchange: " + price); // should be logged into a file
+                resolve(parseFloat(price));
+            }
+        });
+    });
+}
+
 // fetch multiple price from different exchanges
 // filters out bad prices, errors, and returns with the avarage
 async function getPrice(CCY){
     try{
         // TODO: implement more exchanges. e.g GDAY,  CEX.io
-        const [krakenPrice,bitstampPrice]= await Promise.all([getKrakenPrice(CCY), getBitstampPrice(CCY)]);
+        const [krakenPrice,gdaxPrice]= await Promise.all([getKrakenPrice(CCY), getGdaxPrice(CCY)]);
         // TODO: ignore rates extreme values, or on exception/rejection
-        return (krakenPrice+bitstampPrice)/2;
+        return (krakenPrice+gdaxPrice)/2;
     } catch (e) {
         console.error(e); //
     }
