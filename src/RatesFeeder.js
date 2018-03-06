@@ -133,6 +133,3 @@ async function updatePrice(CCY){
         console.log(err)
     }
 }
-
-
-updatePrice("EUR");
