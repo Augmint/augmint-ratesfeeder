@@ -41,6 +41,13 @@ module.exports = {
 
 const web3 = new Web3(new Web3.providers.HttpProvider(process.env.HTTP_PROVIDER_URL));
 
+//dirty hack for web3@1.0.0 support for localhost testrpc, see https://github.com/trufflesuite/truffle-contract/issues/56#issuecomment-331084530
+if (typeof web3.currentProvider.sendAsync !== "function") {
+    web3.currentProvider.sendAsync = function() {
+        return web3.currentProvider.send.apply(web3.currentProvider, arguments);
+    };
+}
+
 // Truffle abstraction to interact with our deployed contract
 const augmintRates = contract(AugmintRates);
 const augmintToken = contract(AugmintToken);
@@ -53,14 +60,6 @@ const networkId = web3.eth.net.getId().then(networkId => {
     augmintToken.setNetwork(networkId);
     augmintRatesInstance = augmintRates.at(augmintRates.address);
     augmintTokenInstance = augmintToken.at(augmintToken.address);
-
-    // Dirty hack for web3@1.0.0 support for localhost testrpc
-    // see https://github.com/trufflesuite/truffle-contract/issues/56#issuecomment-331084530
-    if (typeof augmintRates.currentProvider.sendAsync !== "function") {
-        augmintRates.currentProvider.sendAsync = function() {
-            return augmintRates.currentProvider.send.apply(augmintRates.currentProvider, arguments);
-        };
-    }
 
     return networkId;
 });
