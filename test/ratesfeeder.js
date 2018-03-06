@@ -6,12 +6,12 @@ describe("RatesFeeder: real exchange rate tests", function() {
         const price = await ratesFeeder.getKrakenPrice("EUR");
         assert.equal("number", typeof price);
     });
-    /*
-    it('BitStamp interface should return a number', async function () {
+
+    it.skip("BitStamp interface should return a number", async function() {
         const price = await ratesFeeder.getBitstampPrice("EUR");
-        assert.equal('number', typeof price);
+        assert.equal("number", typeof price);
     });
-    */
+
     it("Gdax interface should return a number", async function() {
         const price = await ratesFeeder.getGdaxPrice("EUR");
         assert.equal("number", typeof price);
