@@ -18,7 +18,10 @@
     },
     "scripts": {
         "start": "node ./src/RatesFeeder.js",
-        "test": "mocha --timeout 10000"
+        "test": "mocha --timeout 10000",
+        "contracts:migrate": "cd augmint-contracts && yarn migrate",
+        "ganache:run": "cd augmint-contracts && yarn ganache:run",
+        "contracts:runmigrate": "cd augmint-contracts && yarn runmigrate"
     },
     "repository": {
         "type": "git",
