@@ -1,5 +1,5 @@
 const ratesFeeder = require("../src/RatesFeeder.js");
 
-ratesFeeder.init().then(() => {
-    ratesFeeder.updatePrice("EUR");
+ratesFeeder.init().then(async () => {
+    await ratesFeeder.updatePrice("EUR");
 });

@@ -2,6 +2,7 @@
   TODO
 * Update every X minutes, or after Y % price movement
 * Running on private full node, and testnet.
+* support ipc for local geth run
 * ...
 */
 
@@ -17,8 +18,11 @@ let web3;
 let decimalsDiv;
 let decimals;
 let augmintRatesInstance;
+let augmintRatesWeb3Contract; // need to use this instad of truffle-contract for sign txs with privateKey
 let augmintTokenInstance;
 const account = process.env.ETHEREUM_ACCOUNT;
+const SET_RATE_GAS = 60000;
+const isInfura = process.env.IS_INFURA === "true" ? true : false;
 
 module.exports = {
     get decimalsDiv() {
@@ -33,6 +37,9 @@ module.exports = {
     get augmintRatesInstance() {
         return augmintRatesInstance;
     },
+    get augmintRatesWeb3Contract() {
+        return augmintRatesWeb3Contract;
+    },
     get augmintTokenInstance() {
         return augmintTokenInstance;
     },
@@ -44,17 +51,35 @@ module.exports = {
     updatePrice
 };
 
+console.log(
+    // IMPORTANT: NEVER expose keys even not in logs!
+    `** RatesFeedeer loaded with settings:
+    NODE_ENV: ${process.env.NODE_ENV}
+    PROVIDER_TYPE: ${process.env.PROVIDER_TYPE}
+    IS_INFURA: ${process.env.IS_INFURA} (${isInfura ? "true" : false})
+    PROVIDER_URL: ${process.env.PROVIDER_URL}
+    INFURA_API_KEY: ${process.env.INFURA_API_KEY ? "[secret]" : "not provided"}
+    ETHEREUM_ACCOUNT: ${process.env.ETHEREUM_ACCOUNT}
+    ETHEREUM_PRIVATE_KEY: ${process.env.ETHEREUM_PRIVATE_KEY ? "[secret]" : "not provided"}`
+);
+
 async function init() {
     switch (process.env.PROVIDER_TYPE) {
-    case "http_local": {
-        web3 = new Web3(new Web3.providers.HttpProvider(process.env.HTTP_LOCAL_URL));
+    case "http": {
+        let apiKey = "";
+        if (isInfura) {
+            if (!process.env.INFURA_API_KEY) {
+                throw new Error("PROVIDER_TYPE is http and IS_INFURA == true but INFURA_API_KEY is not set");
+            }
+            apiKey = process.env.INFURA_API_KEY;
+        }
+
+        web3 = new Web3(new Web3.providers.HttpProvider(process.env.PROVIDER_URL + apiKey));
         break;
     }
-    case "http_infura": {
-        if (!process.env.INFURA_API_KEY) {
-            throw new Error("PROVIDER_TYPE is " + process.env.PROVIDER_TYPE + " but INFURA_API_KEY is not set");
-        }
-        web3 = new Web3(new Web3.providers.HttpProvider(process.env.HTTP_INFURA_URL + process.env.INFURA_API_KEY));
+    case "websocket": {
+        // NB: infura doesn't require API KEY for WS yet
+        web3 = new Web3(new Web3.providers.WebsocketProvider(process.env.PROVIDER_URL));
         break;
     }
     default:
@@ -86,6 +111,7 @@ async function init() {
     augmintToken.setNetwork(networkId);
     augmintRatesInstance = augmintRates.at(augmintRates.address);
     augmintTokenInstance = augmintToken.at(augmintToken.address);
+    augmintRatesWeb3Contract = new web3.eth.Contract(augmintRates.abi, augmintRates.address);
 
     decimals = await augmintTokenInstance.decimals();
     decimalsDiv = 10 ** decimals;
@@ -152,23 +178,71 @@ async function getPrice(CCY) {
     }
 }
 
+function onConfirmation(confirmationNumber, receipt) {
+    console.log(`  Confirmation #${confirmationNumber} received. txhash: ${receipt.transactionHash}`);
+}
+
 async function updatePrice(CCY) {
     try {
         const price = await getPrice(CCY);
 
         // Send data back contract on-chain
         //process.stdout.write("Sending to the Augmint Contracts using Rates.setRate() ... "); // should be logged into a file
-        const tx = await augmintRatesInstance.setRate(CCY, price * decimalsDiv, { from: account });
-        // TODO: chain .on callbacks to log submitted but not mined txhash then returned tx on mined event
-        // TODO: check tx status and/or RateChanged event + args in args.logs[0]
-        console.log(
-            `updatePrice():  augmintRatesInstance.setRate(${CCY}, ${price *
-                decimalsDiv}, {from: ${account}}) result:\n${JSON.stringify(tx, null, 3)}`
-        );
+        const bytes_ccy = web3.utils.asciiToHex(CCY);
+        const priceToSend = Math.round(price * decimalsDiv);
+        const setRateTx = augmintRatesWeb3Contract.methods.setRate(bytes_ccy, priceToSend);
+        const encodedABI = setRateTx.encodeABI();
 
-        const storedRates = await augmintRatesInstance.rates(CCY);
+        const txToSign = {
+            from: account,
+            to: augmintRatesInstance.address,
+            gas: SET_RATE_GAS,
+            data: encodedABI
+        };
+
+        const signedTx = await web3.eth.accounts.signTransaction(txToSign, process.env.ETHEREUM_PRIVATE_KEY);
+
+        console.log(
+            `==> updatePrice() sending setRate(${CCY}, ${priceToSend}) from ${account} to ${
+                augmintRatesInstance.address
+            } at ${process.env.PROVIDER_URL}`
+        );
+        let tx;
+        if (isInfura) {
+            // we receive Invalid JSON RPC response: "" from infura with sendTransaction
+            tx = web3.eth.sendSignedTransaction(signedTx.rawTransaction);
+        } else {
+            // we receive sender "sender doesn't have enough funds to send tx." on ganache with sendSignedTransaction
+            // TODO: test which call work on other networks than infura/local (eg. local geth?) + how to use same call
+            tx = web3.eth.sendTransaction(signedTx);
+        }
+
+        tx.on("error", error => {
+            throw new Error(error);
+        });
+
+        tx.on("transactionHash", hash => {
+            console.log("  tx hash received: " + hash);
+        });
+
+        tx.on("confirmation", onConfirmation);
+
+        const receipt = await tx.on("receipt");
+
+        if (web3.utils.hexToNumber(receipt.status) !== 1) {
+            throw new Error(`updatePrice() setRate failed, returned status: ${receipt.status}
+               augmintRatesInstance.setRate(${CCY}, ${priceToSend}, {from: ${account}})
+               receipt:
+               ${JSON.stringify(receipt, 3, null)}`);
+        }
+        console.log(`  receipt received.  gasUsed: ${receipt.gasUsed} txhash: ${receipt.transactionHash}`);
+
+        // TODO: return after a few confirmations (web3's .on('confirmation') waits for 24...).
+        // TODO: ganache with websocket hangs forever (b/c no confirmations on ganache)
+
+        //const storedRates = await augmintRatesInstance.rates(CCY);
         //console.log(storedRates[0].c[0]/100+ " done."); // Should we wait until the price is set as we wanted? // should be logged into a file
     } catch (err) {
-        console.log(err);
+        console.error(err);
     }
 }
