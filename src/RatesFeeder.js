@@ -23,7 +23,6 @@ let augmintRatesWeb3Contract; // need to use this instad of truffle-contract for
 let augmintTokenInstance;
 const account = process.env.ETHEREUM_ACCOUNT;
 const SET_RATE_GAS = 60000;
-const isInfura = process.env.IS_INFURA === "true" ? true : false;
 
 module.exports = {
     get isInitialised() {
@@ -63,7 +62,6 @@ console.log(
     `** RatesFeedeer loaded with settings:
     NODE_ENV: ${process.env.NODE_ENV}
     PROVIDER_TYPE: ${process.env.PROVIDER_TYPE}
-    IS_INFURA: ${process.env.IS_INFURA} (${isInfura ? "true" : false})
     PROVIDER_URL: ${process.env.PROVIDER_URL}
     INFURA_API_KEY: ${process.env.INFURA_API_KEY ? "[secret]" : "not provided"}
     ETHEREUM_ACCOUNT: ${process.env.ETHEREUM_ACCOUNT}
@@ -74,10 +72,10 @@ async function init() {
     switch (process.env.PROVIDER_TYPE) {
     case "http": {
         let apiKey = "";
-        if (isInfura) {
-            if (!process.env.INFURA_API_KEY) {
-                throw new Error("PROVIDER_TYPE is http and IS_INFURA == true but INFURA_API_KEY is not set");
-            }
+
+        if (!process.env.INFURA_API_KEY) {
+            apiKey = "";
+        } else {
             apiKey = process.env.INFURA_API_KEY;
         }
 
