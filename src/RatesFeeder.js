@@ -15,6 +15,7 @@ const contract = require("truffle-contract");
 
 let web3;
 let decimalsDiv;
+let decimals;
 let augmintRatesInstance;
 let augmintTokenInstance;
 const account = process.env.ETHEREUM_ACCOUNT;
@@ -22,6 +23,9 @@ const account = process.env.ETHEREUM_ACCOUNT;
 module.exports = {
     get decimalsDiv() {
         return decimalsDiv;
+    },
+    get decimals() {
+        return decimals;
     },
     get account() {
         return account;
@@ -82,6 +86,9 @@ async function init() {
     augmintToken.setNetwork(networkId);
     augmintRatesInstance = augmintRates.at(augmintRates.address);
     augmintTokenInstance = augmintToken.at(augmintToken.address);
+
+    decimals = await augmintTokenInstance.decimals();
+    decimalsDiv = 10 ** decimals;
 }
 
 // get ETH/CCY price  from Kraken Exchange
@@ -148,8 +155,6 @@ async function getPrice(CCY) {
 async function updatePrice(CCY) {
     try {
         const price = await getPrice(CCY);
-        const decimals = await augmintTokenInstance.decimals();
-        decimalsDiv = 10 ** decimals;
 
         // Send data back contract on-chain
         //process.stdout.write("Sending to the Augmint Contracts using Rates.setRate() ... "); // should be logged into a file
