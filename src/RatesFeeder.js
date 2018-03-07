@@ -186,10 +186,13 @@ async function getPrice(CCY) {
     }
 }
 
-function onConfirmation(confirmationNumber, receipt) {
+function onSetRateTxConfirmations(confirmationNumber, receipt) {
     console.log(`  Confirmation #${confirmationNumber} received. txhash: ${receipt.transactionHash}`);
 }
 
+/* Update price on chain.
+    If price is provided then it's used but rounded to AugmintToken.decimals first
+    if called without price argument then it fetches the latest price via getPrice first */
 async function updatePrice(CCY, price) {
     try {
         if (typeof price === "undefined") {
@@ -200,6 +203,7 @@ async function updatePrice(CCY, price) {
         //process.stdout.write("Sending to the Augmint Contracts using Rates.setRate() ... "); // should be logged into a file
         const bytes_ccy = web3.utils.asciiToHex(CCY);
         const priceToSend = Math.round(price * decimalsDiv);
+
         const setRateTx = augmintRatesWeb3Contract.methods.setRate(bytes_ccy, priceToSend);
         const encodedABI = setRateTx.encodeABI();
 
@@ -217,27 +221,27 @@ async function updatePrice(CCY, price) {
                 augmintRatesInstance.address
             } at ${process.env.PROVIDER_URL}`
         );
-        let tx;
-        if (isInfura) {
-            // we receive Invalid JSON RPC response: "" from infura with sendTransaction
-            tx = web3.eth.sendSignedTransaction(signedTx.rawTransaction);
-        } else {
-            // we receive sender "sender doesn't have enough funds to send tx." on ganache with sendSignedTransaction
-            // TODO: test which call work on other networks than infura/local (eg. local geth?) + how to use same call
-            tx = web3.eth.sendTransaction(signedTx);
-        }
 
-        tx.on("error", error => {
-            throw new Error(error);
-        });
+        const tx = web3.eth.sendSignedTransaction(signedTx.rawTransaction);
 
-        tx.on("transactionHash", hash => {
-            console.log("  tx hash received: " + hash);
-        });
-
-        tx.on("confirmation", onConfirmation);
-
-        const receipt = await tx.on("receipt");
+        const receipt = await tx
+            .once("transactionHash", hash => {
+                console.log("  tx hash received: " + hash);
+            })
+            .once("receipt", receipt => {
+                console.log(`  receipt received.  gasUsed: ${receipt.gasUsed} txhash: ${receipt.transactionHash}`);
+            })
+            .once("confirmation", (confirmationNumber, receipt) => {
+                console.log("  first confirmation", confirmationNumber);
+            })
+            .on("confirmation", onSetRateTxConfirmations)
+            .on("error", error => {
+                throw new Error(error);
+            })
+            .then(async receipt => {
+                console.log("  mined", bytes_ccy);
+                return receipt;
+            });
 
         if (web3.utils.hexToNumber(receipt.status) !== 1) {
             throw new Error(`updatePrice() setRate failed, returned status: ${receipt.status}
@@ -245,7 +249,6 @@ async function updatePrice(CCY, price) {
                receipt:
                ${JSON.stringify(receipt, 3, null)}`);
         }
-        console.log(`  receipt received.  gasUsed: ${receipt.gasUsed} txhash: ${receipt.transactionHash}`);
 
         // TODO: return after a few confirmations (web3's .on('confirmation') waits for 24...).
         // TODO: ganache with websocket hangs forever (b/c no confirmations on ganache)
