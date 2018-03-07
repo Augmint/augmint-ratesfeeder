@@ -23,6 +23,7 @@ let augmintRatesWeb3Contract; // need to use this instad of truffle-contract for
 let augmintTokenInstance;
 const account = process.env.ETHEREUM_ACCOUNT;
 const SET_RATE_GAS = 60000;
+const SUCCESS_AFTER_N_CONFIRMATION = parseInt(process.env.SUCCESS_AFTER_N_CONFIRMATION);
 
 module.exports = {
     get isInitialised() {
@@ -65,7 +66,9 @@ console.log(
     PROVIDER_URL: ${process.env.PROVIDER_URL}
     INFURA_API_KEY: ${process.env.INFURA_API_KEY ? "[secret]" : "not provided"}
     ETHEREUM_ACCOUNT: ${process.env.ETHEREUM_ACCOUNT}
-    ETHEREUM_PRIVATE_KEY: ${process.env.ETHEREUM_PRIVATE_KEY ? "[secret]" : "not provided"}`
+    ETHEREUM_PRIVATE_KEY: ${process.env.ETHEREUM_PRIVATE_KEY ? "[secret]" : "not provided"}
+    SUCCESS_AFTER_N_CONFIRMATION: ${process.env.SUCCESS_AFTER_N_CONFIRMATION}
+    `
 );
 
 async function init() {
@@ -186,6 +189,12 @@ async function getPrice(CCY) {
 
 function onSetRateTxConfirmations(confirmationNumber, receipt) {
     console.log(`  Confirmation #${confirmationNumber} received. txhash: ${receipt.transactionHash}`);
+    if (confirmationNumber >= SUCCESS_AFTER_N_CONFIRMATION) {
+        console.log(
+            ` setRate tx success, exiting. Received ${confirmationNumber}. confirmation (defined by SUCCESS_AFTER_N_CONFIRMATION)`
+        );
+        process.exit(0);
+    }
 }
 
 /* Update price on chain.
