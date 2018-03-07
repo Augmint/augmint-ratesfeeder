@@ -21,6 +21,6 @@ describe("RatesFeeder: real exchange rate tests", function() {
         // TODO: check tx.logs[0].event + args ?
 
         const storedRate = await ratesFeeder.augmintRatesInstance.rates("EUR");
-        assert.equal(storedRate[0].c[0], parseInt(price * ratesFeeder.decimalsDiv));
+        assert.equal(storedRate[0].c[0], Math.round(price * ratesFeeder.decimalsDiv));
     });
 });
