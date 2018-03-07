@@ -182,9 +182,11 @@ function onConfirmation(confirmationNumber, receipt) {
     console.log(`  Confirmation #${confirmationNumber} received. txhash: ${receipt.transactionHash}`);
 }
 
-async function updatePrice(CCY) {
+async function updatePrice(CCY, price) {
     try {
-        const price = await getPrice(CCY);
+        if (typeof price === "undefined") {
+            price = await getPrice(CCY);
+        }
 
         // Send data back contract on-chain
         //process.stdout.write("Sending to the Augmint Contracts using Rates.setRate() ... "); // should be logged into a file
