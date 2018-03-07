@@ -14,6 +14,7 @@ const AugmintRates = require("./contractsBuild/Rates.json");
 const AugmintToken = require("./contractsBuild/TokenAEur.json");
 const contract = require("truffle-contract");
 
+let isInitialised = false;
 let web3;
 let decimalsDiv;
 let decimals;
@@ -25,6 +26,9 @@ const SET_RATE_GAS = 60000;
 const isInfura = process.env.IS_INFURA === "true" ? true : false;
 
 module.exports = {
+    get isInitialised() {
+        return isInitialised;
+    },
     get decimalsDiv() {
         return decimalsDiv;
     },
@@ -42,6 +46,9 @@ module.exports = {
     },
     get augmintTokenInstance() {
         return augmintTokenInstance;
+    },
+    get web3() {
+        return web3;
     },
     init,
     getKrakenPrice,
@@ -115,6 +122,7 @@ async function init() {
 
     decimals = await augmintTokenInstance.decimals();
     decimalsDiv = 10 ** decimals;
+    isInitialised = true;
 }
 
 // get ETH/CCY price  from Kraken Exchange

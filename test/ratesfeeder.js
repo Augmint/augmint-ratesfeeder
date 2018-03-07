@@ -1,25 +1,19 @@
+/* test of RatesFeeder with mocked ratesProviders
+    TODO: mock price info
+*/
 const assert = require("assert");
-const ratesFeeder = require("../src/RatesFeeder.js");
+const baseHelpers = require("./helpers/base.js");
+
+let ratesFeeder;
 
 describe("RatesFeeder: real exchange rate tests", function() {
     before(async () => {
-        await ratesFeeder.init();
+        ratesFeeder = await baseHelpers.ratesFeeder();
     });
 
-    it("Kraken interface should return a number", async function() {
-        const price = await ratesFeeder.getKrakenPrice("EUR");
-        assert.equal(typeof price, "number");
-    });
+    it("ratesFeeder should return an avarage price of all sources");
 
-    it.skip("BitStamp interface should return a number", async function() {
-        const price = await ratesFeeder.getBitstampPrice("EUR");
-        assert.equal(typeof price, "number");
-    });
-
-    it("Gdax interface should return a number", async function() {
-        const price = await ratesFeeder.getGdaxPrice("EUR");
-        assert.equal(typeof price, "number");
-    });
+    it("ratesFeeder should set an avarage price of all sources when called without price");
 
     it("set on-chain rate and should be the same", async function() {
         const price = 213.14;
