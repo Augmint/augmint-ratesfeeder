@@ -1,26 +1,26 @@
+/* test of RatesFeeder with mocked ratesProviders
+    TODO: mock price info
+*/
 const assert = require("assert");
-const ratesFeeder = require("../src/RatesFeeder.js");
+const baseHelpers = require("./helpers/base.js");
+
+let ratesFeeder;
 
 describe("RatesFeeder: real exchange rate tests", function() {
-    it("Kraken interface should return a number", async function() {
-        const price = await ratesFeeder.getKrakenPrice("EUR");
-        assert.equal("number", typeof price);
-    });
-    /*
-    it('BitStamp interface should return a number', async function () {
-        const price = await ratesFeeder.getBitstampPrice("EUR");
-        assert.equal('number', typeof price);
-    });
-    */
-    it("Gdax interface should return a number", async function() {
-        const price = await ratesFeeder.getGdaxPrice("EUR");
-        assert.equal("number", typeof price);
+    before(async () => {
+        ratesFeeder = await baseHelpers.ratesFeeder();
     });
 
+    it("ratesFeeder should return an avarage price of all sources");
+
+    it("ratesFeeder should set an avarage price of all sources when called without price");
+
     it("set on-chain rate and should be the same", async function() {
-        const price = await ratesFeeder.getPrice("EUR");
-        await ratesFeeder.updatePrice("EUR");
+        const price = 213.14;
+        await ratesFeeder.updatePrice("EUR", price);
+        // TODO: check tx.logs[0].event + args ?
+
         const storedRate = await ratesFeeder.augmintRatesInstance.rates("EUR");
-        assert.equal(parseInt(price * ratesFeeder.decimalsDiv), storedRate[0].c[0]);
+        assert.equal(storedRate[0].c[0], Math.round(price * ratesFeeder.decimalsDiv));
     });
 });
