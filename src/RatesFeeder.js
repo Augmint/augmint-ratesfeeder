@@ -2,6 +2,7 @@
   TODO
 * Update every X minutes, or after Y % price movement
 * Running on private full node, and testnet.
+* support ipc for local geth run
 * ...
 */
 
@@ -9,28 +10,47 @@
 require("./env.js");
 const Web3 = require("web3");
 const fetch = require("fetch");
-const AugmintRates = require("../augmint-contracts/build/contracts/Rates.json");
-const AugmintToken = require("../augmint-contracts/build/contracts/TokenAEur.json");
+const AugmintRates = require("./contractsBuild/Rates.json");
+const AugmintToken = require("./contractsBuild/TokenAEur.json");
 const contract = require("truffle-contract");
 
+let isInitialised = false;
+let web3;
 let decimalsDiv;
-let accounts;
+let decimals;
 let augmintRatesInstance;
+let augmintRatesWeb3Contract; // need to use this instad of truffle-contract for sign txs with privateKey
 let augmintTokenInstance;
+const account = process.env.ETHEREUM_ACCOUNT;
+const SET_RATE_GAS = 60000;
+const SUCCESS_AFTER_N_CONFIRMATION = parseInt(process.env.SUCCESS_AFTER_N_CONFIRMATION);
 
 module.exports = {
+    get isInitialised() {
+        return isInitialised;
+    },
     get decimalsDiv() {
         return decimalsDiv;
     },
-    get accounts() {
-        return accounts;
+    get decimals() {
+        return decimals;
+    },
+    get account() {
+        return account;
     },
     get augmintRatesInstance() {
         return augmintRatesInstance;
     },
+    get augmintRatesWeb3Contract() {
+        return augmintRatesWeb3Contract;
+    },
     get augmintTokenInstance() {
         return augmintTokenInstance;
     },
+    get web3() {
+        return web3;
+    },
+    init,
     getKrakenPrice,
     getBitstampPrice,
     getGdaxPrice,
@@ -38,20 +58,72 @@ module.exports = {
     updatePrice
 };
 
-const web3 = new Web3(new Web3.providers.HttpProvider("http://localhost:8545"));
+console.log(
+    // IMPORTANT: NEVER expose keys even not in logs!
+    `** RatesFeedeer loaded with settings:
+    NODE_ENV: ${process.env.NODE_ENV}
+    PROVIDER_TYPE: ${process.env.PROVIDER_TYPE}
+    PROVIDER_URL: ${process.env.PROVIDER_URL}
+    INFURA_API_KEY: ${process.env.INFURA_API_KEY ? "[secret]" : "not provided"}
+    ETHEREUM_ACCOUNT: ${process.env.ETHEREUM_ACCOUNT}
+    ETHEREUM_PRIVATE_KEY: ${process.env.ETHEREUM_PRIVATE_KEY ? "[secret]" : "not provided"}
+    SUCCESS_AFTER_N_CONFIRMATION: ${process.env.SUCCESS_AFTER_N_CONFIRMATION}
+    `
+);
 
-// Truffle abstraction to interact with our deployed contract
-const augmintRates = contract(AugmintRates);
-const augmintToken = contract(AugmintToken);
-augmintRates.setProvider(web3.currentProvider);
-augmintToken.setProvider(web3.currentProvider);
+async function init() {
+    switch (process.env.PROVIDER_TYPE) {
+    case "http": {
+        let apiKey = "";
 
-// Dirty hack for web3@1.0.0 support for localhost testrpc
-// see https://github.com/trufflesuite/truffle-contract/issues/56#issuecomment-331084530
-if (typeof augmintRates.currentProvider.sendAsync !== "function") {
-    augmintRates.currentProvider.sendAsync = function() {
-        return augmintRates.currentProvider.send.apply(augmintRates.currentProvider, arguments);
-    };
+        if (!process.env.INFURA_API_KEY) {
+            apiKey = "";
+        } else {
+            apiKey = process.env.INFURA_API_KEY;
+        }
+
+        web3 = new Web3(new Web3.providers.HttpProvider(process.env.PROVIDER_URL + apiKey));
+        break;
+    }
+    case "websocket": {
+        // NB: infura doesn't require API KEY for WS yet
+        web3 = new Web3(new Web3.providers.WebsocketProvider(process.env.PROVIDER_URL));
+        break;
+    }
+    default:
+        throw new Error(process.env.PROVIDER_TYPE + " is not supported yet");
+    }
+
+    //dirty hack for web3@1.0.0 support for localhost testrpc, see https://github.com/trufflesuite/truffle-contract/issues/56#issuecomment-331084530
+    if (typeof web3.currentProvider.sendAsync !== "function") {
+        web3.currentProvider.sendAsync = function() {
+            return web3.currentProvider.send.apply(web3.currentProvider, arguments);
+        };
+    }
+
+    if (!web3.utils.isAddress(account)) {
+        throw new Error("Invalid ETHEREUM_ACCOUNT: " + account);
+    }
+    web3.eth.defaultAccount = account;
+
+    // Truffle abstraction to interact with our deployed contract
+    const augmintRates = contract(AugmintRates);
+    const augmintToken = contract(AugmintToken);
+
+    // TODO: move all connection logic to a separate component: connection.js or ethereumConnection.js?
+    const networkId = await web3.eth.net.getId();
+
+    augmintRates.setProvider(web3.currentProvider);
+    augmintToken.setProvider(web3.currentProvider);
+    augmintRates.setNetwork(networkId);
+    augmintToken.setNetwork(networkId);
+    augmintRatesInstance = augmintRates.at(augmintRates.address);
+    augmintTokenInstance = augmintToken.at(augmintToken.address);
+    augmintRatesWeb3Contract = new web3.eth.Contract(augmintRates.abi, augmintRates.address);
+
+    decimals = await augmintTokenInstance.decimals();
+    decimalsDiv = 10 ** decimals;
+    isInitialised = true;
 }
 
 // get ETH/CCY price  from Kraken Exchange
@@ -115,44 +187,82 @@ async function getPrice(CCY) {
     }
 }
 
-// helper function from web/ethHelper.js.
-function asyncGetAccounts(web3) {
-    return new Promise(function(resolve, reject) {
-        web3.eth.getAccounts((error, accounts) => {
-            if (error) {
-                reject(new Error("Can't get account list from web3 (asyncGetAccounts).\n " + error));
-            } else {
-                if (!web3.utils.isAddress(accounts[0])) {
-                    reject(
-                        new Error(
-                            "Can't get default account from web3 (asyncGetAccounts)." +
-                                "\nIf you are using Metamask make sure it's unlocked with your password."
-                        )
-                    );
-                }
-                resolve(accounts);
-            }
-        });
-    });
+function onSetRateTxConfirmations(confirmationNumber, receipt) {
+    console.log(`  Confirmation #${confirmationNumber} received. txhash: ${receipt.transactionHash}`);
+    if (confirmationNumber >= SUCCESS_AFTER_N_CONFIRMATION) {
+        console.log(
+            ` setRate tx success, exiting. Received ${confirmationNumber}. confirmation (defined by SUCCESS_AFTER_N_CONFIRMATION)`
+        );
+        process.exit(0);
+    }
 }
 
-async function updatePrice(CCY) {
+/* Update price on chain.
+    If price is provided then it's used but rounded to AugmintToken.decimals first
+    if called without price argument then it fetches the latest price via getPrice first */
+async function updatePrice(CCY, price) {
     try {
-        [accounts, augmintRatesInstance, augmintTokenInstance] = await Promise.all([
-            asyncGetAccounts(web3),
-            augmintRates.deployed(),
-            augmintToken.deployed()
-        ]);
-        const price = await getPrice(CCY);
-        const decimals = await augmintTokenInstance.decimals();
-        decimalsDiv = 10 ** decimals;
+        if (typeof price === "undefined") {
+            price = await getPrice(CCY);
+        }
 
         // Send data back contract on-chain
         //process.stdout.write("Sending to the Augmint Contracts using Rates.setRate() ... "); // should be logged into a file
-        augmintRatesInstance.setRate(CCY, price * decimalsDiv, { from: accounts[0] });
-        const storedRates = await augmintRatesInstance.rates(CCY);
+        const bytes_ccy = web3.utils.asciiToHex(CCY);
+        const priceToSend = Math.round(price * decimalsDiv);
+
+        const setRateTx = augmintRatesWeb3Contract.methods.setRate(bytes_ccy, priceToSend);
+        const encodedABI = setRateTx.encodeABI();
+
+        const txToSign = {
+            from: account,
+            to: augmintRatesInstance.address,
+            gas: SET_RATE_GAS,
+            data: encodedABI
+        };
+
+        const signedTx = await web3.eth.accounts.signTransaction(txToSign, process.env.ETHEREUM_PRIVATE_KEY);
+
+        console.log(
+            `==> updatePrice() sending setRate(${CCY}, ${priceToSend}) from ${account} to ${
+                augmintRatesInstance.address
+            } at ${process.env.PROVIDER_URL}`
+        );
+
+        const tx = web3.eth.sendSignedTransaction(signedTx.rawTransaction);
+
+        const receipt = await tx
+            .once("transactionHash", hash => {
+                console.log("  tx hash received: " + hash);
+            })
+            .once("receipt", receipt => {
+                console.log(`  receipt received.  gasUsed: ${receipt.gasUsed} txhash: ${receipt.transactionHash}`);
+            })
+            .once("confirmation", (confirmationNumber, receipt) => {
+                console.log("  first confirmation", confirmationNumber);
+            })
+            .on("confirmation", onSetRateTxConfirmations)
+            .on("error", error => {
+                throw new Error(error);
+            })
+            .then(async receipt => {
+                console.log("  mined", bytes_ccy);
+                return receipt;
+            });
+
+        if (web3.utils.hexToNumber(receipt.status) !== 1) {
+            throw new Error(`updatePrice() setRate failed, returned status: ${receipt.status}
+               augmintRatesInstance.setRate(${CCY}, ${priceToSend}, {from: ${account}})
+               receipt:
+               ${JSON.stringify(receipt, 3, null)}`);
+        }
+
+        // TODO: return after a few confirmations (web3's .on('confirmation') waits for 24...).
+        // TODO: ganache with websocket hangs forever (b/c no confirmations on ganache)
+
+        //const storedRates = await augmintRatesInstance.rates(CCY);
         //console.log(storedRates[0].c[0]/100+ " done."); // Should we wait until the price is set as we wanted? // should be logged into a file
     } catch (err) {
-        console.log(err);
+        console.error(err);
     }
 }
