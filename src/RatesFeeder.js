@@ -238,9 +238,6 @@ async function updatePrice(CCY, price) {
             .once("receipt", receipt => {
                 console.log(`  receipt received.  gasUsed: ${receipt.gasUsed} txhash: ${receipt.transactionHash}`);
             })
-            .once("confirmation", (confirmationNumber, receipt) => {
-                console.log("  first confirmation", confirmationNumber);
-            })
             .on("confirmation", onSetRateTxConfirmations)
             .on("error", error => {
                 throw new Error(error);
