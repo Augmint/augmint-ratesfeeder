@@ -22,7 +22,7 @@ let augmintRatesInstance;
 let augmintRatesWeb3Contract; // need to use this instad of truffle-contract for sign txs with privateKey
 let augmintTokenInstance;
 const account = process.env.ETHEREUM_ACCOUNT;
-const SET_RATE_GAS = 60000;
+const SET_RATE_GAS = 80000;
 const SUCCESS_AFTER_N_CONFIRMATION = parseInt(process.env.SUCCESS_AFTER_N_CONFIRMATION);
 
 module.exports = {
