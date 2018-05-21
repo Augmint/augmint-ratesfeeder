@@ -26,19 +26,19 @@
   "sourceMap": "",
   "deployedSourceMap": "",
   "source": "/*\n *  exchange fee calculation  interface (not used yet)\n */\npragma solidity ^0.4.23;\n\n\ninterface ExchangeFeeInterface {\n    function calculateExchangeFee(uint weiAmount) external view returns (uint256 weiFee);\n}\n",
-  "sourcePath": "/Users/petro/ether/augmint-contracts/contracts/interfaces/ExchangeFeeInterface.sol",
+  "sourcePath": "/Users/petro/ether/augmint-ratesfeeder/augmint-contracts/contracts/interfaces/ExchangeFeeInterface.sol",
   "ast": {
-    "absolutePath": "/Users/petro/ether/augmint-contracts/contracts/interfaces/ExchangeFeeInterface.sol",
+    "absolutePath": "/Users/petro/ether/augmint-ratesfeeder/augmint-contracts/contracts/interfaces/ExchangeFeeInterface.sol",
     "exportedSymbols": {
       "ExchangeFeeInterface": [
-        5067
+        5437
       ]
     },
-    "id": 5068,
+    "id": 5438,
     "nodeType": "SourceUnit",
     "nodes": [
       {
-        "id": 5059,
+        "id": 5429,
         "literals": [
           "solidity",
           "^",
@@ -46,7 +46,7 @@
           ".23"
         ],
         "nodeType": "PragmaDirective",
-        "src": "62:24:16"
+        "src": "62:24:17"
       },
       {
         "baseContracts": [],
@@ -54,9 +54,9 @@
         "contractKind": "interface",
         "documentation": null,
         "fullyImplemented": false,
-        "id": 5067,
+        "id": 5437,
         "linearizedBaseContracts": [
-          5067
+          5437
         ],
         "name": "ExchangeFeeInterface",
         "nodeType": "ContractDefinition",
@@ -64,7 +64,7 @@
           {
             "body": null,
             "documentation": null,
-            "id": 5066,
+            "id": 5436,
             "implemented": false,
             "isConstructor": false,
             "isDeclaredConst": true,
@@ -72,16 +72,16 @@
             "name": "calculateExchangeFee",
             "nodeType": "FunctionDefinition",
             "parameters": {
-              "id": 5062,
+              "id": 5432,
               "nodeType": "ParameterList",
               "parameters": [
                 {
                   "constant": false,
-                  "id": 5061,
+                  "id": 5431,
                   "name": "weiAmount",
                   "nodeType": "VariableDeclaration",
-                  "scope": 5066,
-                  "src": "156:14:16",
+                  "scope": 5436,
+                  "src": "156:14:17",
                   "stateVariable": false,
                   "storageLocation": "default",
                   "typeDescriptions": {
@@ -89,10 +89,10 @@
                     "typeString": "uint256"
                   },
                   "typeName": {
-                    "id": 5060,
+                    "id": 5430,
                     "name": "uint",
                     "nodeType": "ElementaryTypeName",
-                    "src": "156:4:16",
+                    "src": "156:4:17",
                     "typeDescriptions": {
                       "typeIdentifier": "t_uint256",
                       "typeString": "uint256"
@@ -102,20 +102,20 @@
                   "visibility": "internal"
                 }
               ],
-              "src": "155:16:16"
+              "src": "155:16:17"
             },
             "payable": false,
             "returnParameters": {
-              "id": 5065,
+              "id": 5435,
               "nodeType": "ParameterList",
               "parameters": [
                 {
                   "constant": false,
-                  "id": 5064,
+                  "id": 5434,
                   "name": "weiFee",
                   "nodeType": "VariableDeclaration",
-                  "scope": 5066,
-                  "src": "195:14:16",
+                  "scope": 5436,
+                  "src": "195:14:17",
                   "stateVariable": false,
                   "storageLocation": "default",
                   "typeDescriptions": {
@@ -123,10 +123,10 @@
                     "typeString": "uint256"
                   },
                   "typeName": {
-                    "id": 5063,
+                    "id": 5433,
                     "name": "uint256",
                     "nodeType": "ElementaryTypeName",
-                    "src": "195:7:16",
+                    "src": "195:7:17",
                     "typeDescriptions": {
                       "typeIdentifier": "t_uint256",
                       "typeString": "uint256"
@@ -136,33 +136,33 @@
                   "visibility": "internal"
                 }
               ],
-              "src": "194:16:16"
+              "src": "194:16:17"
             },
-            "scope": 5067,
-            "src": "126:85:16",
+            "scope": 5437,
+            "src": "126:85:17",
             "stateMutability": "view",
             "superFunction": null,
             "visibility": "external"
           }
         ],
-        "scope": 5068,
-        "src": "89:124:16"
+        "scope": 5438,
+        "src": "89:124:17"
       }
     ],
-    "src": "62:152:16"
+    "src": "62:152:17"
   },
   "legacyAST": {
-    "absolutePath": "/Users/petro/ether/augmint-contracts/contracts/interfaces/ExchangeFeeInterface.sol",
+    "absolutePath": "/Users/petro/ether/augmint-ratesfeeder/augmint-contracts/contracts/interfaces/ExchangeFeeInterface.sol",
     "exportedSymbols": {
       "ExchangeFeeInterface": [
-        5067
+        5437
       ]
     },
-    "id": 5068,
+    "id": 5438,
     "nodeType": "SourceUnit",
     "nodes": [
       {
-        "id": 5059,
+        "id": 5429,
         "literals": [
           "solidity",
           "^",
@@ -170,7 +170,7 @@
           ".23"
         ],
         "nodeType": "PragmaDirective",
-        "src": "62:24:16"
+        "src": "62:24:17"
       },
       {
         "baseContracts": [],
@@ -178,9 +178,9 @@
         "contractKind": "interface",
         "documentation": null,
         "fullyImplemented": false,
-        "id": 5067,
+        "id": 5437,
         "linearizedBaseContracts": [
-          5067
+          5437
         ],
         "name": "ExchangeFeeInterface",
         "nodeType": "ContractDefinition",
@@ -188,7 +188,7 @@
           {
             "body": null,
             "documentation": null,
-            "id": 5066,
+            "id": 5436,
             "implemented": false,
             "isConstructor": false,
             "isDeclaredConst": true,
@@ -196,16 +196,16 @@
             "name": "calculateExchangeFee",
             "nodeType": "FunctionDefinition",
             "parameters": {
-              "id": 5062,
+              "id": 5432,
               "nodeType": "ParameterList",
               "parameters": [
                 {
                   "constant": false,
-                  "id": 5061,
+                  "id": 5431,
                   "name": "weiAmount",
                   "nodeType": "VariableDeclaration",
-                  "scope": 5066,
-                  "src": "156:14:16",
+                  "scope": 5436,
+                  "src": "156:14:17",
                   "stateVariable": false,
                   "storageLocation": "default",
                   "typeDescriptions": {
@@ -213,10 +213,10 @@
                     "typeString": "uint256"
                   },
                   "typeName": {
-                    "id": 5060,
+                    "id": 5430,
                     "name": "uint",
                     "nodeType": "ElementaryTypeName",
-                    "src": "156:4:16",
+                    "src": "156:4:17",
                     "typeDescriptions": {
                       "typeIdentifier": "t_uint256",
                       "typeString": "uint256"
@@ -226,20 +226,20 @@
                   "visibility": "internal"
                 }
               ],
-              "src": "155:16:16"
+              "src": "155:16:17"
             },
             "payable": false,
             "returnParameters": {
-              "id": 5065,
+              "id": 5435,
               "nodeType": "ParameterList",
               "parameters": [
                 {
                   "constant": false,
-                  "id": 5064,
+                  "id": 5434,
                   "name": "weiFee",
                   "nodeType": "VariableDeclaration",
-                  "scope": 5066,
-                  "src": "195:14:16",
+                  "scope": 5436,
+                  "src": "195:14:17",
                   "stateVariable": false,
                   "storageLocation": "default",
                   "typeDescriptions": {
@@ -247,10 +247,10 @@
                     "typeString": "uint256"
                   },
                   "typeName": {
-                    "id": 5063,
+                    "id": 5433,
                     "name": "uint256",
                     "nodeType": "ElementaryTypeName",
-                    "src": "195:7:16",
+                    "src": "195:7:17",
                     "typeDescriptions": {
                       "typeIdentifier": "t_uint256",
                       "typeString": "uint256"
@@ -260,20 +260,20 @@
                   "visibility": "internal"
                 }
               ],
-              "src": "194:16:16"
+              "src": "194:16:17"
             },
-            "scope": 5067,
-            "src": "126:85:16",
+            "scope": 5437,
+            "src": "126:85:17",
             "stateMutability": "view",
             "superFunction": null,
             "visibility": "external"
           }
         ],
-        "scope": 5068,
-        "src": "89:124:16"
+        "scope": 5438,
+        "src": "89:124:17"
       }
     ],
-    "src": "62:152:16"
+    "src": "62:152:17"
   },
   "compiler": {
     "name": "solc",
@@ -281,5 +281,5 @@
   },
   "networks": {},
   "schemaVersion": "2.0.0",
-  "updatedAt": "2018-04-20T17:42:05.294Z"
+  "updatedAt": "2018-05-21T09:24:19.717Z"
 }

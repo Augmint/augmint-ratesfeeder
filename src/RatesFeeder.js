@@ -247,7 +247,7 @@ async function updatePrice(CCY, price) {
                 return receipt;
             });
 
-        if (web3.utils.hexToNumber(receipt.status) !== 1) {
+        if (!receipt.status) {
             throw new Error(`updatePrice() setRate failed, returned status: ${receipt.status}
                augmintRatesInstance.setRate(${CCY}, ${priceToSend}, {from: ${account}})
                receipt:
