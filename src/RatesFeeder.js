@@ -10,16 +10,15 @@
 require("./env.js");
 const Web3 = require("web3");
 const fetch = require("fetch");
-const AugmintRates = require("./contractsBuild/Rates.json");
-const AugmintToken = require("./contractsBuild/TokenAEur.json");
-const contract = require("truffle-contract");
+const contractsHelper = require("./contractsHelper.js");
+const TokenAEur = require("./abiniser/abis/TokenAEur_ABI_4b49e7e6d1a9a2de81a4d2d088acbc04.json");
+const Rates = require("./abiniser/abis/Rates_ABI_cc8bc64cd780f047eca819e6cd3b8af9.json");
 
 let isInitialised = false;
 let web3;
 let decimalsDiv;
 let decimals;
 let augmintRatesInstance;
-let augmintRatesWeb3Contract; // need to use this instad of truffle-contract for sign txs with privateKey
 let augmintTokenInstance;
 const account = process.env.ETHEREUM_ACCOUNT;
 const SET_RATE_GAS = 80000;
@@ -40,9 +39,6 @@ module.exports = {
     },
     get augmintRatesInstance() {
         return augmintRatesInstance;
-    },
-    get augmintRatesWeb3Contract() {
-        return augmintRatesWeb3Contract;
     },
     get augmintTokenInstance() {
         return augmintTokenInstance;
@@ -106,22 +102,10 @@ async function init() {
     }
     web3.eth.defaultAccount = account;
 
-    // Truffle abstraction to interact with our deployed contract
-    const augmintRates = contract(AugmintRates);
-    const augmintToken = contract(AugmintToken);
+    augmintRatesInstance = await contractsHelper.connectLatest(web3, Rates);
+    augmintTokenInstance = await contractsHelper.connectLatest(web3, TokenAEur);
 
-    // TODO: move all connection logic to a separate component: connection.js or ethereumConnection.js?
-    const networkId = await web3.eth.net.getId();
-
-    augmintRates.setProvider(web3.currentProvider);
-    augmintToken.setProvider(web3.currentProvider);
-    augmintRates.setNetwork(networkId);
-    augmintToken.setNetwork(networkId);
-    augmintRatesInstance = augmintRates.at(augmintRates.address);
-    augmintTokenInstance = augmintToken.at(augmintToken.address);
-    augmintRatesWeb3Contract = new web3.eth.Contract(augmintRates.abi, augmintRates.address);
-
-    decimals = await augmintTokenInstance.decimals();
+    decimals = await augmintTokenInstance.methods.decimals().call();
     decimalsDiv = 10 ** decimals;
     isInitialised = true;
 }
@@ -211,12 +195,12 @@ async function updatePrice(CCY, price) {
         const bytes_ccy = web3.utils.asciiToHex(CCY);
         const priceToSend = Math.round(price * decimalsDiv);
 
-        const setRateTx = augmintRatesWeb3Contract.methods.setRate(bytes_ccy, priceToSend);
+        const setRateTx = augmintRatesInstance.methods.setRate(bytes_ccy, priceToSend);
         const encodedABI = setRateTx.encodeABI();
 
         const txToSign = {
             from: account,
-            to: augmintRatesInstance.address,
+            to: augmintRatesInstance._address,
             gas: SET_RATE_GAS,
             data: encodedABI
         };
@@ -225,7 +209,7 @@ async function updatePrice(CCY, price) {
 
         console.log(
             `==> updatePrice() sending setRate(${CCY}, ${priceToSend}) from ${account} to ${
-                augmintRatesInstance.address
+                augmintRatesInstance._address
             } at ${process.env.PROVIDER_URL}`
         );
 
