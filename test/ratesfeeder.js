@@ -7,7 +7,7 @@ const baseHelpers = require("./helpers/base.js");
 let ratesFeeder;
 
 describe("RatesFeeder: real exchange rate tests", function() {
-    before(async () => {
+    before(async function() {
         ratesFeeder = await baseHelpers.ratesFeeder();
     });
 
