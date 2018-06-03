@@ -9,7 +9,7 @@
     },
     "dependencies": {
         "cross-env": "5.1.6",
-        "dotenv": "5.0.1",
+        "dotenv": "6.0.0",
         "fetch": "1.1.0",
         "web3": "1.0.0-beta.34"
     },
