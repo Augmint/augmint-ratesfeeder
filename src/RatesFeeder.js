@@ -11,8 +11,8 @@ require("./env.js");
 const Web3 = require("web3");
 const fetch = require("fetch");
 const contractsHelper = require("./contractsHelper.js");
-const TokenAEur = require("./abiniser/abis/TokenAEur_ABI_4b49e7e6d1a9a2de81a4d2d088acbc04.json");
-const Rates = require("./abiniser/abis/Rates_ABI_cc8bc64cd780f047eca819e6cd3b8af9.json");
+const TokenAEur = require("./abiniser/abis/TokenAEur_ABI_303ed8bcda6fb3c3119cf273797961ef.json");
+const Rates = require("./abiniser/abis/Rates_ABI_73a17ebb0acc71773371c6a8e1c8e6ce.json");
 
 let isInitialised = false;
 let web3;
