@@ -17,10 +17,13 @@ describe("RatesFeeder: real exchange rate tests", function() {
 
     it("set on-chain rate and should be the same", async function() {
         const price = 213.14;
-        await ratesFeeder.updatePrice("EUR", price);
+        const CCY = "EUR";
+        const bytesCCY = baseHelpers.web3.utils.asciiToHex(CCY);
+        await ratesFeeder.updatePrice(CCY, price);
         // TODO: check tx.logs[0].event + args ?
 
-        const storedRate = await ratesFeeder.augmintRatesInstance.rates("EUR");
-        assert.equal(storedRate[0].c[0], Math.round(price * ratesFeeder.decimalsDiv));
+        const storedRate = await ratesFeeder.augmintRatesInstance.methods.rates(bytesCCY).call();
+
+        assert.equal(storedRate.rate, Math.round(price * ratesFeeder.decimalsDiv));
     });
 });
