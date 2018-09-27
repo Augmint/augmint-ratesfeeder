@@ -6,8 +6,8 @@
       "latestDeployedAddress": "0xd217ac4354211cda27dd4027b5e223280f885ad3",
       "deployments": {
         "0xd217ac4354211cda27dd4027b5e223280f885ad3": {
-          "generatedAt": "2018-06-04T12:57:19.236Z",
-          "truffleContractFileUpdatedAt": "2018-06-04T12:57:14.691Z",
+          "generatedAt": "2018-08-14T19:51:17.977Z",
+          "truffleContractFileUpdatedAt": "2018-08-14T19:50:59.878Z",
           "deployTransactionHash": "0x737edaecbaa92d4dcb7750dddd1bfa65a080dce09e88de3c7c09148136c72c23",
           "compiler": {
             "name": "solc",
