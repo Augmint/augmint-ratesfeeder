@@ -1,7 +1,7 @@
 {
   "contractName": "StabilityBoardProxy",
   "abiHash": "dd40c0d39ea8bad8a388522667a84687",
-  "generatedAt": "2018-09-27T14:51:02.026Z",
+  "generatedAt": "2018-10-18T13:35:02.446Z",
   "abi": [
     {
       "constant": true,

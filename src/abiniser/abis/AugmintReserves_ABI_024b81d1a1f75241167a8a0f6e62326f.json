@@ -1,7 +1,7 @@
 {
   "contractName": "AugmintReserves",
   "abiHash": "024b81d1a1f75241167a8a0f6e62326f",
-  "generatedAt": "2018-09-27T14:51:01.942Z",
+  "generatedAt": "2018-10-18T13:35:02.346Z",
   "abi": [
     {
       "constant": true,

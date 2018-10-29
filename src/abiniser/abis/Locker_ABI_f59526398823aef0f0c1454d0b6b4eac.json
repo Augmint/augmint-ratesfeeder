@@ -1,7 +1,7 @@
 {
   "contractName": "Locker",
   "abiHash": "f59526398823aef0f0c1454d0b6b4eac",
-  "generatedAt": "2018-09-27T14:51:02.003Z",
+  "generatedAt": "2018-10-18T13:35:02.422Z",
   "abi": [
     {
       "constant": true,
