@@ -25,12 +25,14 @@ after_script: greenkeeper-lockfile-upload
 after_success:
   - wget https://raw.githubusercontent.com/k3rn31p4nic/travis-ci-discord-webhook/master/send.sh
   - chmod +x send.sh
-  - ./send.sh success https://discordapp.com/api/webhooks/420555162260865034/6BRfzaKamvKK6_OrEGl6r-TWsAqf8qixBVj9eFVrGFsHYX8WidpkXz4tc8rj-OgqfnwX
+  - ./send.sh success $DISCORD_WEBHOOK_URL
 after_failure:
   - wget https://raw.githubusercontent.com/k3rn31p4nic/travis-ci-discord-webhook/master/send.sh
   - chmod +x send.sh
-  - ./send.sh failure https://discordapp.com/api/webhooks/420555162260865034/6BRfzaKamvKK6_OrEGl6r-TWsAqf8qixBVj9eFVrGFsHYX8WidpkXz4tc8rj-OgqfnwX
+  - ./send.sh failure $DISCORD_WEBHOOK_URL
 env:
   global:
     # GH_TOKEN for greenkeeper
     - secure: SSgqXUNxvwXsEz2WuY72oqhIy+OOKCtuFejf6vPODnY+eGxYIZIskganepdJmZkFF0EklPi44D3DNnm1yeQNuSrExC1Fq49qiHRhRsa22soY2JrvXsGHA8x3tbZ4FxexYzb7p4Ej75TlAb2F9kRr+r9M0eqq/pD4IjdT9Zy05E7zodXxANmGbct6DsYyqSvxyHeH5cYsK33HA8UmrIbose2VHjGwvPI4T64LxEEla9mnWDLmN5gmLNYPglUWckJlRwXRGOyswedO7FI1P2xk+e3nByYpE+SI0KLKnth9I5PBYTwrPU7Uy2JeGM8bpZK86tRSeMvFb5pn5h0sW14TWQdzlUpaXDI8/+o1m9BrgTIC38fw3VMm5Vo/EWZXG9zm1A56hVHf7NJkWeOC2KoPsCwCAViOKLMsErCfa+xOf2E+/JzvUpS78DiMmgouuzQ59NKU6BhMUsHDBcQNP5YS8sIRYedtEfsO9O4iwx5BG3+izs5zHEiJ1vUN8ACOa3TJ0/PKbGSgZx8lmLW8dRJw9P1i1N5LSH5X/xuAd/b1HbiM4ItkCq28WKVlQRUlqO+WYcOYdbNMQ4u6Xs+8gqdC2zGwaZ7YBMr2lcXKxJtrYHx4b95WCw7iBVWwuA5zXDDiAFpvCjV/etJ+i0GplqFL1ziFZ3Nb2R7wGezak0LffSc=
+    # DISCORD_WEBHOOK_URL
+    - secure: dswuM6gVOnYKsYjsyF3lqO1vRExc4WivTXoGW2/37zF73S51yLICrhLzSkHe77CN5pLZHAbhkTZLpqfFmsTdnpiq3d3epBpG/B18If/I4w39eyUiYiyPJb8T+9PHBuf9HLNzAI9Lv+HZErokzG2sLya9gbiTV/Em3QY/8+5FLw2jf4wOkzmWV4Bxfh8Fxul0vR+R4UcX6FF77GboW7Fpk958TpkQYYBwt439TW47fix6/pHzKqvwQX5UhjI0tcixecP9/PR7mZPDZN/G3ISPCc7BpHZzHt87CfUZJBKmz+8smGWhhUyyfcFbwqt9hG+yVjqoZqXSIDmN5sG0jJvWISSPo3wlPdjKTKiPCElIrvNJBKesB5cfVFHAoIrI53bNPdoSFwhkyzcZ6s2V1LqgQnRYq+MqPtH1X4vi7+715+t17ULcB7depXYhH1d/gf60O0CSw5U903d0Ev7lWaWOfZocZjxHt/3ah1ZrgtWmKgn8Yc+2HO04Fsl7+Ntvk5/MzjGJDaqNtOk+2Ocf7CSu5R9AY1ofNsjyq0+V+n2JvlCkOR8P0MJ6oYORrjIFi0NwTVV53NT+2eigahtZqOzZfLSKR8ibWxOtIFtljL5RoN+eiDWiZO79FfNTxTP7Ok4uGKImmrYZwzhnFW29rWsonzFwyllMLhjteiL7bgO8gTo=
