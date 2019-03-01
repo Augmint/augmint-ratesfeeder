@@ -11,7 +11,7 @@
         "cross-env": "5.2.0",
         "dotenv": "6.2.0",
         "fetch": "1.1.0",
-        "web3": "1.0.0-beta.36"
+        "web3": "1.0.0-beta.46"
     },
     "devDependencies": {
         "mocha": "6.0.2"
