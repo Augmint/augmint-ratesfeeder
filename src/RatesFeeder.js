@@ -79,7 +79,7 @@ async function init(_tickers) {
 
     log.info(
         // IMPORTANT: NEVER expose keys even not in logs!
-        `** RatesFeedeer loaded with settings:
+        `** RatesFeedeer starting with settings:
         NODE_ENV: ${process.env.NODE_ENV}
         PROVIDER_TYPE: ${process.env.PROVIDER_TYPE}
         PROVIDER_URL: ${process.env.PROVIDER_URL}
@@ -89,6 +89,7 @@ async function init(_tickers) {
         LIVE_PRICE_THRESHOLD_PT: ${process.env.LIVE_PRICE_THRESHOLD_PT}
         SETRATE_TX_TIMEOUT: ${process.env.SETRATE_TX_TIMEOUT}
         CHECK_TICKER_PRICE_INTERVAL: ${process.env.CHECK_TICKER_PRICE_INTERVAL}
+        LOG: ${process.env.LOG} (log.level: ${log.level})
         Ticker providers: ${tickerNames}`
     );
 

@@ -1,5 +1,14 @@
+require("./env.js");
+const ulog = require("ulog");
+const log = ulog("runFeeder");
 const ratesFeeder = require("../src/RatesFeeder.js");
 const subscribeTickers = require("../src/subscribeTickers.js");
+
+log.info(
+    `** runFeeder starting with settings:
+    NODE_ENV: ${process.env.NODE_ENV}
+    LOG: ${process.env.LOG}`
+);
 
 ratesFeeder
     .init(subscribeTickers.tickers)
@@ -10,16 +19,16 @@ ratesFeeder
         subscribeTickers.tickers.forEach(ticker => {
             // ticker.on("pricechange", onTickerPriceChange);
             // ticker.on("trade", onTickerTrade);
-            ticker.on("disconnect", onTickerDisconnect);
+            // ticker.on("disconnecting", onTickerDisconnecting);
             ticker.on("heartbeattimeout", onTickerHeartbeatTimeout);
         });
 
-        function onTickerDisconnect(ticker) {
-            console.log(ticker.name, "disconnecting.", "WebSocket readyState: ", this.ws.readyState);
-        }
+        // function onTickerDisconnecting(ticker) {
+        //     log.debug(ticker.name, "disconnecting.", "WebSocket readyState: ", this.ws.readyState);
+        // }
 
         function onTickerHeartbeatTimeout(ticker) {
-            console.log(ticker.name, "heartbeat timed out. Reconnecting.");
+            log.warn(ticker.name, "heartbeat timed out. Reconnecting.");
         }
 
         // function onTickerPriceChange(lastTrade, prevTrade, ticker) {
@@ -27,7 +36,7 @@ ratesFeeder
         // }
         //
         // function onTickerTrade(lastTrade, prevTrade, ticker) {
-        //      console.log("onTickerTrade", ticker.name, "\t", JSON.stringify(lastTrade), JSON.stringify(prevTrade));
+        //     log.debug("onTickerTrade", ticker.name, "\t", JSON.stringify(lastTrade), JSON.stringify(prevTrade));
         // }
     })
     .catch(error => {
