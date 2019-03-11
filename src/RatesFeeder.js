@@ -240,7 +240,7 @@ async function updatePrice(currency, price) {
 
         log.debug(
             `==> updatePrice() nonce: ${nonce} sending setRate(${currency}, ${priceToSend}). currentAugmintRate[${CCY}]: ${
-                currentAugmintRate[CCY].price
+                currentAugmintRate[CCY] ? currentAugmintRate[CCY].price : "null"
             } livePrice: ${livePrice}`
         );
 
