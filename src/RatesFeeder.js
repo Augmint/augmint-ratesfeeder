@@ -310,7 +310,6 @@ class RatesFeeder {
     }
 
     getStatus() {
-        log.debug("gets");
         const status = {
             isInitialised: this.isInitialised,
             account: this.account,
@@ -318,7 +317,6 @@ class RatesFeeder {
             augmintTokenContract: this.augmintTokenInstance ? this.augmintTokenInstance._address : "null",
             lastTickerCheckResult: this.lastTickerCheckResult
         };
-        log.debug(status);
         return status;
     }
 }
