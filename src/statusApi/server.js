@@ -9,7 +9,7 @@ const DEFAULT_PORT = 30000;
 
 function start(ratesFeeder) {
     ["SIGINT", "SIGHUP", "SIGTERM"].forEach(signal => process.on(signal, signal => exit(signal)));
-    const port = normalizePort(process.env.STATUSAPI_PORT || DEFAULT_PORT);
+    const port = normalizePort(process.env.PORT || DEFAULT_PORT);
     app.set("port", port);
     app.locals.ratesFeeder = ratesFeeder;
 
