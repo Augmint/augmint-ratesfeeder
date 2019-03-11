@@ -7,7 +7,7 @@ module.exports = {
     },
     ratesFeeder: async function() {
         if (!ratesFeeder.isInitialised) {
-            await ratesFeeder.init();
+            await ratesFeeder.init([]);
         }
         return ratesFeeder;
     }
