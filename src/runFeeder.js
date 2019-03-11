@@ -3,6 +3,7 @@ const ulog = require("ulog");
 const log = ulog("runFeeder");
 const RatesFeeder = require("../src/RatesFeeder.js");
 const subscribeTickers = require("../src/subscribeTickers.js");
+const statusApi = require("../src/statusApi/server.js");
 
 log.info(
     `** runFeeder starting with settings:
@@ -11,6 +12,8 @@ log.info(
 );
 
 const ratesFeeder = new RatesFeeder(subscribeTickers.tickers);
+statusApi.start(ratesFeeder);
+
 ratesFeeder
     .init()
 
@@ -33,7 +36,7 @@ ratesFeeder
         }
 
         // function onTickerPriceChange(lastTrade, prevTrade, ticker) {
-        //     console.log("onTickerPriceChange", ticker.name, "\t", JSON.stringify(lastTrade), JSON.stringify(prevTrade));
+        //     log.log("onTickerPriceChange", ticker.name, "\t", JSON.stringify(lastTrade), JSON.stringify(prevTrade));
         // }
         //
         // function onTickerTrade(lastTrade, prevTrade, ticker) {
@@ -41,6 +44,6 @@ ratesFeeder
         // }
     })
     .catch(error => {
-        console.error("Error: Can't init ratesFeeder. Details:\n", error);
+        log.error("Error: Can't init ratesFeeder. Details:\n", error);
         process.exit(1);
     });

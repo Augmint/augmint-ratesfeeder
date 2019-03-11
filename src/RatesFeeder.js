@@ -45,9 +45,7 @@ class RatesFeeder {
         this.augmintTokenInstance = null;
         this.checkTickerPriceTimer = null;
         this.account = null;
-        this.currentAugmintRate = null; // to store the last rate on Augmint format: { EUR: { price, updatetime}}
-        this.livePrice = null; // the price calculated from all the tickers
-        this.livePriceDifference = null; //
+        this.lastTickerCheckResult = {};
     }
 
     async init() {
@@ -139,29 +137,33 @@ class RatesFeeder {
             );
         });
 
-        this.currentAugmintRate[CCY] = await this.getAugmintRate(CCY);
+        const currentAugmintRate = await this.getAugmintRate(CCY);
 
-        this.updateLivePrice(this.tickers);
-        this.livePriceDifference =
-            Math.round(
-                (Math.abs(this.livePrice - this.currentAugmintRate[CCY].price) / this.currentAugmintRate[CCY].price) *
-                    10000
-            ) / 10000;
+        const livePrice = this.calculateAugmintPrice(this.tickers);
+        const livePriceDifference =
+            Math.round((Math.abs(livePrice - currentAugmintRate.price) / currentAugmintRate.price) * 10000) / 10000;
 
         log.debug(
-            `    checkTickerPrice() currentAugmintRate[${CCY}]: ${this.currentAugmintRate[CCY].price} livePrice: ${
-                this.livePrice
-            } livePriceDifference: ${this.livePriceDifference * 100} %`
+            `    checkTickerPrice() currentAugmintRate[${CCY}]: ${
+                currentAugmintRate.price
+            } livePrice: ${livePrice} livePriceDifference: ${livePriceDifference * 100} %`
         );
 
-        if (this.livePriceDifference * 100 > parseFloat(process.env.LIVE_PRICE_THRESHOLD_PT)) {
-            await this.promiseTimeout(process.env.SETRATE_TX_TIMEOUT, this.updatePrice(CCY, this.livePrice)).catch(
-                error => {
-                    // NB: it's not necessarily an error, ethereum network might be just slow.
-                    // we still schedule our next check which will send an update at next tick of checkTickerPrice()
-                    log.error("updatePrice failed with Error: ", error);
-                }
-            );
+        const tickersInfo = this.tickers.map(t => ({ name: t.name, lastTrade: t.lastTrade }));
+        this.lastTickerCheckResult.checkedAt = new Date();
+        this.lastTickerCheckResult[CCY] = {
+            currentAugmintRate,
+            livePrice,
+            livePriceDifference,
+            tickersInfo
+        };
+
+        if (livePriceDifference * 100 > parseFloat(process.env.LIVE_PRICE_THRESHOLD_PT)) {
+            await this.promiseTimeout(process.env.SETRATE_TX_TIMEOUT, this.updatePrice(CCY, livePrice)).catch(error => {
+                // NB: it's not necessarily an error, ethereum network might be just slow.
+                // we still schedule our next check which will send an update at next tick of checkTickerPrice()
+                log.error("updatePrice failed with Error: ", error);
+            });
         }
 
         // Schedule next check
@@ -185,8 +187,8 @@ class RatesFeeder {
         });
     }
 
-    updateLivePrice(tickers) {
-        const _livePrice = tickers.reduce((accum, ticker) => {
+    calculateAugmintPrice(tickers) {
+        const price = tickers.reduce((accum, ticker) => {
             if (ticker.lastTrade && ticker.lastTrade.price && ticker.lastTrade.price > 0) {
                 if (accum > 0) {
                     return (accum + ticker.lastTrade.price) / 2;
@@ -197,7 +199,7 @@ class RatesFeeder {
                 return accum;
             }
         }, 0);
-        this.livePrice = Math.round(_livePrice * this.decimalsDiv) / this.decimalsDiv;
+        return Math.round(price * this.decimalsDiv) / this.decimalsDiv;
     }
 
     async getAugmintRate(currency) {
@@ -307,6 +309,18 @@ class RatesFeeder {
         this.stop();
     }
 
+    getStatus() {
+        log.debug("gets");
+        const status = {
+            isInitialised: this.isInitialised,
+            account: this.account,
+            ratesContract: this.augmintRatesInstance ? this.augmintRatesInstance._address : "null",
+            augmintTokenContract: this.augmintTokenInstance ? this.augmintTokenInstance._address : "null",
+            lastTickerCheckResult: this.lastTickerCheckResult
+        };
+        log.debug(status);
+        return status;
+    }
 }
 
 module.exports = RatesFeeder;
