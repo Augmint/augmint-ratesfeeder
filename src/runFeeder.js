@@ -1,7 +1,7 @@
 require("./env.js");
 const ulog = require("ulog");
 const log = ulog("runFeeder");
-const ratesFeeder = require("../src/RatesFeeder.js");
+const RatesFeeder = require("../src/RatesFeeder.js");
 const subscribeTickers = require("../src/subscribeTickers.js");
 
 log.info(
@@ -10,8 +10,9 @@ log.info(
     LOG: ${process.env.LOG}`
 );
 
+const ratesFeeder = new RatesFeeder(subscribeTickers.tickers);
 ratesFeeder
-    .init(subscribeTickers.tickers)
+    .init()
 
     .then(() => {
         subscribeTickers.connectAll();

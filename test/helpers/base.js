@@ -1,5 +1,6 @@
 /* Generic test helper functions */
-const ratesFeeder = require("../../src/RatesFeeder.js");
+const RatesFeeder = require("../../src/RatesFeeder.js");
+const ratesFeeder = new RatesFeeder([]);
 
 module.exports = {
     get web3() {
@@ -7,7 +8,7 @@ module.exports = {
     },
     ratesFeeder: async function() {
         if (!ratesFeeder.isInitialised) {
-            await ratesFeeder.init([]);
+            await ratesFeeder.init();
         }
         return ratesFeeder;
     }
