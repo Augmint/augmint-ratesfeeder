@@ -71,6 +71,7 @@ module.exports = {
 };
 
 async function init(_tickers) {
+    ["SIGINT", "SIGHUP", "SIGTERM"].forEach(signal => process.on(signal, signal => exit(signal)));
     tickers = _tickers;
     const tickerNames = tickers.reduce(
         (accum, ticker, idx) => (idx == 0 ? ticker.name : accum + ", " + ticker.name),
@@ -298,7 +299,7 @@ async function updatePrice(currency, price) {
 
 function stop() {
     clearTimeout(checkTickerPriceTimer);
-    if (web3.currentProvider.connection && typeof web3.currentProvider.connection.close === "function") {
+    if (web3 && web3.currentProvider.connection && typeof web3.currentProvider.connection.close === "function") {
         // connection.close only exists when websocket connection. it is required to close in order node process to stop
         web3.currentProvider.connection.close();
     }
@@ -308,4 +309,3 @@ function exit(signal) {
     log.info(`\n*** ratesFeeder Received ${signal}. Stopping.`);
     stop();
 }
-["SIGINT", "SIGHUP", "SIGTERM"].forEach(signal => process.on(signal, signal => exit(signal)));
