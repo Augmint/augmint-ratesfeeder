@@ -28,7 +28,7 @@ Subscribe to the following events emmited:
     <ticker instance>.on("pricechange", (trade, prevTrade, tickerInstance) => { ... } ); // only when
 
     // on intentional disconnect
-    <ticker instance>.on("disconnect", (tickerInstance) => {...});
+    <ticker instance>.on("disconnecting", (tickerInstance) => {...});
 
     // when server closed connection and WebsocketTicker tries to reconnect
     <ticker instance>.on("heartbeattimeout", (tickerInstance) => {...});

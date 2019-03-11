@@ -1,1 +1,1 @@
-ratesfeeder: yarn start:production
+web: yarn start:production
