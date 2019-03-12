@@ -52,7 +52,6 @@ class RatesFeeder {
         ["SIGINT", "SIGHUP", "SIGTERM"].forEach(signal => process.on(signal, signal => this.exit(signal)));
 
         this.account = process.env.ETHEREUM_ACCOUNT;
-        this.currentAugmintRate = {};
 
         log.info(
             // IMPORTANT: NEVER expose keys even not in logs!
@@ -146,7 +145,7 @@ class RatesFeeder {
         log.debug(
             `    checkTickerPrice() currentAugmintRate[${CCY}]: ${
                 currentAugmintRate.price
-            } livePrice: ${livePrice} livePriceDifference: ${livePriceDifference * 100} %`
+            } livePrice: ${livePrice} livePriceDifference: ${(livePriceDifference * 100).toFixed(2)} %`
         );
 
         const tickersInfo = this.tickers.map(t => ({ name: t.name, lastTrade: t.lastTrade }));
@@ -237,8 +236,8 @@ class RatesFeeder {
 
             log.debug(
                 `==> updatePrice() nonce: ${nonce} sending setRate(${currency}, ${priceToSend}). currentAugmintRate[${CCY}]: ${
-                    this.currentAugmintRate[CCY] ? this.currentAugmintRate[CCY].price : "null"
-                } livePrice: ${this.livePrice}`
+                    this.lastTickerCheckResult[CCY] ? this.lastTickerCheckResult[CCY].currentAugmintRate.price : "null"
+                } livePrice: ${this.lastTickerCheckResult[CCY] ? this.lastTickerCheckResult[CCY].livePrice : "null"}`
             );
 
             const tx = this.web3.eth.sendSignedTransaction(signedTx.rawTransaction);
@@ -259,9 +258,7 @@ class RatesFeeder {
                         log.log(
                             `    \u2713 updatePrice() nonce: ${nonce}  txHash: ${
                                 receipt.transactionHash
-                            } mined: setRate(${currency}, ${priceToSend}). Previous Augmint rate: ${
-                                this.currentAugmintRate[CCY].price
-                            }`
+                            } confirmed: setRate(${currency}, ${priceToSend}) - received ${confirmationNumber} confirmations  `
                         );
                     } else {
                         log.debug(
