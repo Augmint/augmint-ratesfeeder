@@ -9,7 +9,9 @@ const app = express();
 const router = express.Router();
 const statusRouter = require("./routes/status.js");
 
-app.use(httplogger(process.env.STATUSAPI_HTTP_LOG_LEVEL));
+if (process.env.STATUSAPI_HTTP_LOG_LEVEL.toLowerCase().trim() !== "off") {
+    app.use(httplogger(process.env.STATUSAPI_HTTP_LOG_LEVEL));
+}
 
 router.use("/status", statusRouter);
 
