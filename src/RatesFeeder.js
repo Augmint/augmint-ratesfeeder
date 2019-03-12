@@ -27,7 +27,6 @@ const Rates = require("./abiniser/abis/Rates_ABI_73a17ebb0acc71773371c6a8e1c8e6c
 
 const CCY = "EUR"; // only EUR is suported by WebsocketTicker providers ATM
 const SET_RATE_GAS_LIMIT = 80000;
-const LOG_AS_SUCCESS_AFTER_N_CONFIRMATION = 12;
 
 class RatesFeeder {
     constructor(tickers) {
@@ -66,6 +65,7 @@ class RatesFeeder {
             SETRATE_TX_TIMEOUT: ${process.env.SETRATE_TX_TIMEOUT}
             CHECK_TICKER_PRICE_INTERVAL: ${process.env.CHECK_TICKER_PRICE_INTERVAL}
             LOG: ${process.env.LOG} (log.level: ${log.level})
+            LOG_AS_SUCCESS_AFTER_N_CONFIRMATION: ${process.env.LOG_AS_SUCCESS_AFTER_N_CONFIRMATION}
             Ticker providers: ${this.tickerNames}`
         );
 
@@ -234,7 +234,7 @@ class RatesFeeder {
                 this.web3.eth.getTransactionCount(this.account)
             ]);
 
-            log.debug(
+            log.log(
                 `==> updatePrice() nonce: ${nonce} sending setRate(${currency}, ${priceToSend}). currentAugmintRate[${CCY}]: ${
                     this.lastTickerCheckResult[CCY] ? this.lastTickerCheckResult[CCY].currentAugmintRate.price : "null"
                 } livePrice: ${this.lastTickerCheckResult[CCY] ? this.lastTickerCheckResult[CCY].livePrice : "null"}`
@@ -254,7 +254,7 @@ class RatesFeeder {
                     );
                 })
                 .on("confirmation", (confirmationNumber, receipt) => {
-                    if (confirmationNumber === LOG_AS_SUCCESS_AFTER_N_CONFIRMATION) {
+                    if (confirmationNumber === parseInt(process.env.LOG_AS_SUCCESS_AFTER_N_CONFIRMATION)) {
                         log.log(
                             `    \u2713 updatePrice() nonce: ${nonce}  txHash: ${
                                 receipt.transactionHash
