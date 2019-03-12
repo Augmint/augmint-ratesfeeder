@@ -27,7 +27,6 @@ const Rates = require("./abiniser/abis/Rates_ABI_73a17ebb0acc71773371c6a8e1c8e6c
 
 const CCY = "EUR"; // only EUR is suported by WebsocketTicker providers ATM
 const SET_RATE_GAS_LIMIT = 80000;
-const LOG_AS_SUCCESS_AFTER_N_CONFIRMATION = 12;
 
 class RatesFeeder {
     constructor(tickers) {
@@ -52,7 +51,6 @@ class RatesFeeder {
         ["SIGINT", "SIGHUP", "SIGTERM"].forEach(signal => process.on(signal, signal => this.exit(signal)));
 
         this.account = process.env.ETHEREUM_ACCOUNT;
-        this.currentAugmintRate = {};
 
         log.info(
             // IMPORTANT: NEVER expose keys even not in logs!
@@ -67,6 +65,7 @@ class RatesFeeder {
             SETRATE_TX_TIMEOUT: ${process.env.SETRATE_TX_TIMEOUT}
             CHECK_TICKER_PRICE_INTERVAL: ${process.env.CHECK_TICKER_PRICE_INTERVAL}
             LOG: ${process.env.LOG} (log.level: ${log.level})
+            LOG_AS_SUCCESS_AFTER_N_CONFIRMATION: ${process.env.LOG_AS_SUCCESS_AFTER_N_CONFIRMATION}
             Ticker providers: ${this.tickerNames}`
         );
 
@@ -146,7 +145,7 @@ class RatesFeeder {
         log.debug(
             `    checkTickerPrice() currentAugmintRate[${CCY}]: ${
                 currentAugmintRate.price
-            } livePrice: ${livePrice} livePriceDifference: ${livePriceDifference * 100} %`
+            } livePrice: ${livePrice} livePriceDifference: ${(livePriceDifference * 100).toFixed(2)} %`
         );
 
         const tickersInfo = this.tickers.map(t => ({ name: t.name, lastTrade: t.lastTrade }));
@@ -235,10 +234,10 @@ class RatesFeeder {
                 this.web3.eth.getTransactionCount(this.account)
             ]);
 
-            log.debug(
+            log.log(
                 `==> updatePrice() nonce: ${nonce} sending setRate(${currency}, ${priceToSend}). currentAugmintRate[${CCY}]: ${
-                    this.currentAugmintRate[CCY] ? this.currentAugmintRate[CCY].price : "null"
-                } livePrice: ${this.livePrice}`
+                    this.lastTickerCheckResult[CCY] ? this.lastTickerCheckResult[CCY].currentAugmintRate.price : "null"
+                } livePrice: ${this.lastTickerCheckResult[CCY] ? this.lastTickerCheckResult[CCY].livePrice : "null"}`
             );
 
             const tx = this.web3.eth.sendSignedTransaction(signedTx.rawTransaction);
@@ -255,13 +254,11 @@ class RatesFeeder {
                     );
                 })
                 .on("confirmation", (confirmationNumber, receipt) => {
-                    if (confirmationNumber === LOG_AS_SUCCESS_AFTER_N_CONFIRMATION) {
+                    if (confirmationNumber === parseInt(process.env.LOG_AS_SUCCESS_AFTER_N_CONFIRMATION)) {
                         log.log(
                             `    \u2713 updatePrice() nonce: ${nonce}  txHash: ${
                                 receipt.transactionHash
-                            } mined: setRate(${currency}, ${priceToSend}). Previous Augmint rate: ${
-                                this.currentAugmintRate[CCY].price
-                            }`
+                            } confirmed: setRate(${currency}, ${priceToSend}) - received ${confirmationNumber} confirmations  `
                         );
                     } else {
                         log.debug(
