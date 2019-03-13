@@ -1,7 +1,6 @@
 /*
 TODO:
 - Expose status page
-- Logging level for process.env (log only info / errors / warning in prod )
 - Use Infura websocket V3 https://infura.io/docs/ethereum/wss/introduction
 - Get web3 timeout / confirmatio block params from process.env: https://web3js.readthedocs.io/en/1.0/web3-shh.html#web3-module-transactionblocktimeout
    doesn't work with beta33, might require newer release ?
@@ -16,7 +15,6 @@ TODO:
         web3.eth.transactionPollingTimeout: ${web3.eth.transactionPollingTimeout}
 */
 
-// config paramaters from .env for exchange data (real exchange rates and simulated rates)
 require("./env.js");
 const ulog = require("ulog");
 const log = ulog("ratesFeeder");
@@ -27,6 +25,20 @@ const Rates = require("./abiniser/abis/Rates_ABI_73a17ebb0acc71773371c6a8e1c8e6c
 
 const CCY = "EUR"; // only EUR is suported by WebsocketTicker providers ATM
 const SET_RATE_GAS_LIMIT = 80000;
+
+const median = values => {
+    values.sort((a, b) => a - b);
+
+    if (values.length === 0) return 0;
+
+    const half = Math.floor(values.length / 2);
+
+    if (values.length % 2) {
+        return values[half];
+    } else {
+        return (values[half - 1] + values[half]) / 2.0;
+    }
+};
 
 class RatesFeeder {
     constructor(tickers) {
@@ -111,10 +123,11 @@ class RatesFeeder {
         this.decimals = await this.augmintTokenInstance.methods.decimals().call();
         this.decimalsDiv = 10 ** this.decimals;
 
-        this.checkTickerPriceTimer = setTimeout(
-            this.checkTickerPrice.bind(this),
-            process.env.CHECK_TICKER_PRICE_INTERVAL
-        );
+        // Schedule first check
+        this.checkTickerPriceTimer =
+            process.env.CHECK_TICKER_PRICE_INTERVAL > 0
+                ? setTimeout(this.checkTickerPrice.bind(this), process.env.CHECK_TICKER_PRICE_INTERVAL)
+                : null;
 
         log.info(`
             AugmintToken contract: ${this.augmintTokenInstance._address}
@@ -139,37 +152,43 @@ class RatesFeeder {
         const currentAugmintRate = await this.getAugmintRate(CCY);
 
         const livePrice = this.calculateAugmintPrice(this.tickers);
-        const livePriceDifference =
-            Math.round((Math.abs(livePrice - currentAugmintRate.price) / currentAugmintRate.price) * 10000) / 10000;
+        if (livePrice > 0) {
+            const livePriceDifference =
+                Math.round((Math.abs(livePrice - currentAugmintRate.price) / currentAugmintRate.price) * 10000) / 10000;
 
-        log.debug(
-            `    checkTickerPrice() currentAugmintRate[${CCY}]: ${
-                currentAugmintRate.price
-            } livePrice: ${livePrice} livePriceDifference: ${(livePriceDifference * 100).toFixed(2)} %`
-        );
+            log.debug(
+                `    checkTickerPrice() currentAugmintRate[${CCY}]: ${
+                    currentAugmintRate.price
+                } livePrice: ${livePrice} livePriceDifference: ${(livePriceDifference * 100).toFixed(2)} %`
+            );
 
-        const tickersInfo = this.tickers.map(t => ({ name: t.name, lastTrade: t.lastTrade }));
-        this.lastTickerCheckResult.checkedAt = new Date();
-        this.lastTickerCheckResult[CCY] = {
-            currentAugmintRate,
-            livePrice,
-            livePriceDifference,
-            tickersInfo
-        };
+            const tickersInfo = this.tickers.map(t => ({ name: t.name, lastTrade: t.lastTrade }));
+            this.lastTickerCheckResult.checkedAt = new Date();
+            this.lastTickerCheckResult[CCY] = {
+                currentAugmintRate,
+                livePrice,
+                livePriceDifference,
+                tickersInfo
+            };
 
-        if (livePriceDifference * 100 > parseFloat(process.env.LIVE_PRICE_THRESHOLD_PT)) {
-            await this.promiseTimeout(process.env.SETRATE_TX_TIMEOUT, this.updatePrice(CCY, livePrice)).catch(error => {
-                // NB: it's not necessarily an error, ethereum network might be just slow.
-                // we still schedule our next check which will send an update at next tick of checkTickerPrice()
-                log.error("updatePrice failed with Error: ", error);
-            });
+            if (livePriceDifference * 100 > parseFloat(process.env.LIVE_PRICE_THRESHOLD_PT)) {
+                await this.promiseTimeout(process.env.SETRATE_TX_TIMEOUT, this.updatePrice(CCY, livePrice)).catch(
+                    error => {
+                        // NB: it's not necessarily an error, ethereum network might be just slow.
+                        // we still schedule our next check which will send an update at next tick of checkTickerPrice()
+                        log.error("updatePrice failed with Error: ", error);
+                    }
+                );
+            }
+        } else {
+            log.warn("RatesFeeder couldn't get price from any sources. Not updating price info");
         }
 
         // Schedule next check
-        this.checkTickerPriceTimer = setTimeout(
-            this.checkTickerPrice.bind(this),
-            process.env.CHECK_TICKER_PRICE_INTERVAL
-        );
+        this.checkTickerPriceTimer =
+            process.env.CHECK_TICKER_PRICE_INTERVAL > 0
+                ? setTimeout(this.checkTickerPrice.bind(this), process.env.CHECK_TICKER_PRICE_INTERVAL)
+                : null;
     }
 
     promiseTimeout(ms, promise) {
@@ -187,18 +206,14 @@ class RatesFeeder {
     }
 
     calculateAugmintPrice(tickers) {
-        const price = tickers.reduce((accum, ticker) => {
-            if (ticker.lastTrade && ticker.lastTrade.price && ticker.lastTrade.price > 0) {
-                if (accum > 0) {
-                    return (accum + ticker.lastTrade.price) / 2;
-                } else {
-                    return ticker.lastTrade.price;
-                }
-            } else {
-                return accum;
-            }
-        }, 0);
-        return Math.round(price * this.decimalsDiv) / this.decimalsDiv;
+        // ignore 0 or null prices (exchange down or no price info yet)
+        const prices = tickers
+            .filter(ticker => ticker.lastTrade && ticker.lastTrade.price > 0)
+            .map(t => t.lastTrade.price);
+        let augmintPrice = median(prices);
+        augmintPrice = Math.round(augmintPrice * this.decimalsDiv) / this.decimalsDiv;
+
+        return augmintPrice === 0 ? null : augmintPrice;
     }
 
     async getAugmintRate(currency) {
