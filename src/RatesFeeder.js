@@ -1,7 +1,6 @@
 /*
 TODO:
 - Expose status page
-- Logging level for process.env (log only info / errors / warning in prod )
 - Use Infura websocket V3 https://infura.io/docs/ethereum/wss/introduction
 - Get web3 timeout / confirmatio block params from process.env: https://web3js.readthedocs.io/en/1.0/web3-shh.html#web3-module-transactionblocktimeout
    doesn't work with beta33, might require newer release ?
@@ -16,7 +15,6 @@ TODO:
         web3.eth.transactionPollingTimeout: ${web3.eth.transactionPollingTimeout}
 */
 
-// config paramaters from .env for exchange data (real exchange rates and simulated rates)
 require("./env.js");
 const ulog = require("ulog");
 const log = ulog("ratesFeeder");
@@ -27,6 +25,20 @@ const Rates = require("./abiniser/abis/Rates_ABI_73a17ebb0acc71773371c6a8e1c8e6c
 
 const CCY = "EUR"; // only EUR is suported by WebsocketTicker providers ATM
 const SET_RATE_GAS_LIMIT = 80000;
+
+const median = values => {
+    values.sort((a, b) => a - b);
+
+    if (values.length === 0) return 0;
+
+    const half = Math.floor(values.length / 2);
+
+    if (values.length % 2) {
+        return values[half];
+    } else {
+        return (values[half - 1] + values[half]) / 2.0;
+    }
+};
 
 class RatesFeeder {
     constructor(tickers) {
@@ -187,18 +199,13 @@ class RatesFeeder {
     }
 
     calculateAugmintPrice(tickers) {
-        const price = tickers.reduce((accum, ticker) => {
-            if (ticker.lastTrade && ticker.lastTrade.price && ticker.lastTrade.price > 0) {
-                if (accum > 0) {
-                    return (accum + ticker.lastTrade.price) / 2;
-                } else {
-                    return ticker.lastTrade.price;
-                }
-            } else {
-                return accum;
-            }
-        }, 0);
-        return Math.round(price * this.decimalsDiv) / this.decimalsDiv;
+        // ignore 0 or null prices (exchange down or no price info yet)
+        const prices = tickers
+            .filter(ticker => ticker.lastTrade && ticker.lastTrade.price > 0)
+            .map(t => t.lastTrade.price);
+        const augmintPrice = median(prices);
+
+        return Math.round(augmintPrice * this.decimalsDiv) / this.decimalsDiv;
     }
 
     async getAugmintRate(currency) {
