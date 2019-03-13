@@ -26,7 +26,8 @@ const definition = {
         }
     },
 
-    processMessage: (msg, data) => {
+    processMessage: msg => {
+        const data = JSON.parse(msg.data);
         switch (data.event) {
         case "systemStatus":
             return { type: WebsocketTicker.MESSAGE_TYPES.CONNECTED, data };

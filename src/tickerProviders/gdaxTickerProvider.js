@@ -18,7 +18,8 @@ const definition = {
         channels: ["ticker", "heartbeat"]
     },
 
-    processMessage: (msg, data) => {
+    processMessage: msg => {
+        const data = JSON.parse(msg.data);
         switch (data.type) {
         case "error":
             return { type: WebsocketTicker.MESSAGE_TYPES.ERROR, data };
