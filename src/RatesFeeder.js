@@ -123,10 +123,11 @@ class RatesFeeder {
         this.decimals = await this.augmintTokenInstance.methods.decimals().call();
         this.decimalsDiv = 10 ** this.decimals;
 
-        this.checkTickerPriceTimer = setTimeout(
-            this.checkTickerPrice.bind(this),
-            process.env.CHECK_TICKER_PRICE_INTERVAL
-        );
+        // Schedule first check
+        this.checkTickerPriceTimer =
+            process.env.CHECK_TICKER_PRICE_INTERVAL > 0
+                ? setTimeout(this.checkTickerPrice.bind(this), process.env.CHECK_TICKER_PRICE_INTERVAL)
+                : null;
 
         log.info(`
             AugmintToken contract: ${this.augmintTokenInstance._address}
@@ -178,10 +179,10 @@ class RatesFeeder {
         }
 
         // Schedule next check
-        this.checkTickerPriceTimer = setTimeout(
-            this.checkTickerPrice.bind(this),
-            process.env.CHECK_TICKER_PRICE_INTERVAL
-        );
+        this.checkTickerPriceTimer =
+            process.env.CHECK_TICKER_PRICE_INTERVAL > 0
+                ? setTimeout(this.checkTickerPrice.bind(this), process.env.CHECK_TICKER_PRICE_INTERVAL)
+                : null;
     }
 
     promiseTimeout(ms, promise) {
