@@ -152,30 +152,36 @@ class RatesFeeder {
         const currentAugmintRate = await this.getAugmintRate(CCY);
 
         const livePrice = this.calculateAugmintPrice(this.tickers);
-        const livePriceDifference =
-            Math.round((Math.abs(livePrice - currentAugmintRate.price) / currentAugmintRate.price) * 10000) / 10000;
+        if (livePrice > 0) {
+            const livePriceDifference =
+                Math.round((Math.abs(livePrice - currentAugmintRate.price) / currentAugmintRate.price) * 10000) / 10000;
 
-        log.debug(
-            `    checkTickerPrice() currentAugmintRate[${CCY}]: ${
-                currentAugmintRate.price
-            } livePrice: ${livePrice} livePriceDifference: ${(livePriceDifference * 100).toFixed(2)} %`
-        );
+            log.debug(
+                `    checkTickerPrice() currentAugmintRate[${CCY}]: ${
+                    currentAugmintRate.price
+                } livePrice: ${livePrice} livePriceDifference: ${(livePriceDifference * 100).toFixed(2)} %`
+            );
 
-        const tickersInfo = this.tickers.map(t => ({ name: t.name, lastTrade: t.lastTrade }));
-        this.lastTickerCheckResult.checkedAt = new Date();
-        this.lastTickerCheckResult[CCY] = {
-            currentAugmintRate,
-            livePrice,
-            livePriceDifference,
-            tickersInfo
-        };
+            const tickersInfo = this.tickers.map(t => ({ name: t.name, lastTrade: t.lastTrade }));
+            this.lastTickerCheckResult.checkedAt = new Date();
+            this.lastTickerCheckResult[CCY] = {
+                currentAugmintRate,
+                livePrice,
+                livePriceDifference,
+                tickersInfo
+            };
 
-        if (livePriceDifference * 100 > parseFloat(process.env.LIVE_PRICE_THRESHOLD_PT)) {
-            await this.promiseTimeout(process.env.SETRATE_TX_TIMEOUT, this.updatePrice(CCY, livePrice)).catch(error => {
-                // NB: it's not necessarily an error, ethereum network might be just slow.
-                // we still schedule our next check which will send an update at next tick of checkTickerPrice()
-                log.error("updatePrice failed with Error: ", error);
-            });
+            if (livePriceDifference * 100 > parseFloat(process.env.LIVE_PRICE_THRESHOLD_PT)) {
+                await this.promiseTimeout(process.env.SETRATE_TX_TIMEOUT, this.updatePrice(CCY, livePrice)).catch(
+                    error => {
+                        // NB: it's not necessarily an error, ethereum network might be just slow.
+                        // we still schedule our next check which will send an update at next tick of checkTickerPrice()
+                        log.error("updatePrice failed with Error: ", error);
+                    }
+                );
+            }
+        } else {
+            log.warn("RatesFeeder couldn't get price from any sources. Not updating price info");
         }
 
         // Schedule next check
@@ -204,9 +210,10 @@ class RatesFeeder {
         const prices = tickers
             .filter(ticker => ticker.lastTrade && ticker.lastTrade.price > 0)
             .map(t => t.lastTrade.price);
-        const augmintPrice = median(prices);
+        let augmintPrice = median(prices);
+        augmintPrice = Math.round(augmintPrice * this.decimalsDiv) / this.decimalsDiv;
 
-        return Math.round(augmintPrice * this.decimalsDiv) / this.decimalsDiv;
+        return augmintPrice === 0 ? null : augmintPrice;
     }
 
     async getAugmintRate(currency) {

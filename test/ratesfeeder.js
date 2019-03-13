@@ -52,6 +52,12 @@ describe("RatesFeeder: real exchange rate tests", () => {
     });
 
     it("ratesFeeder should set the price on-chain from tickers when diff > threshold ");
+    it("ratesFeeder should return null median price when all tickers null or zero )", () => {
+        const tickers = [{ lastTrade: { price: 0 } }, { lastTrade: { price: null } }, { lastTrade: { price: 0 } }];
+        const expectedPrice = null;
+        const price = ratesFeeder.calculateAugmintPrice(tickers);
+        assert.equal(price, expectedPrice);
+    });
 
     it("ratesFeeder should NOT set the price on-chain from tickers when diff < threshold ");
 
