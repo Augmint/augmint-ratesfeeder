@@ -4,11 +4,13 @@ maintains lastTrade as: {price, volume, time, tradeId}
 depending on ticker provider implementation it updates the last trade when first launched.
 call connectAndSubscribe() after created
 
+Handles plain WebSocket subscriptions or websocket feeds via pusher (e.g. BitStamp).
+
 constructor receives definition object :
 {
     NAME: "BITFINEX", // arbitary name for internal logging purposes
-    WSS_URL: "", // wss endpoint
-    SUBSCRIBE_PAYLOAD: {},
+    WSS_URL: "", // wss endpoint  OR PUSHER_APP_KEY if it's a PUSHER provider
+    SUBSCRIBE_PAYLOAD: message ,
     UNSUBSCRIBE_PAYLOAD: {}, // optional, if set then it will be sent on disconnect
     HEARTBEAT_TIMEOUT: <in ms> // reconnect if no heartbeat (or trade/pong) received from server. optional, default value is below (DEFAULT_HEARTBEAT_TIMEOUT)
     PING_INTERVAL: <in ms>, // Ping server in every ms, null if no ping needed
@@ -42,8 +44,9 @@ https://github.com/coinbase/gdax-node/issues/203
 const ulog = require("ulog");
 const log = ulog("WebsocketTicker");
 const WebSocket = require("ws");
+const Pusher = require("pusher-js");
 const EventEmitter = require("events");
-const DEFAULT_HEARTBEAT_TIMEOUT = 60000; // reconnect if last no heartbeat for this time (in ms)
+const DEFAULT_WSS_HEARTBEAT_TIMEOUT = 60000; // reconnect if last no heartbeat for this time (in ms). Only for WSS connections, pusher has activity_timeout
 const DEFAULT_PING_INTERVAL = null; // most providers don't require pinging but bitfinex disconnects after a while without it
 const MESSAGE_TYPES = {
     CONNECTED: "connected",
@@ -57,6 +60,11 @@ const MESSAGE_TYPES = {
     UNKNOWN: "unknown" // return if unexpected message is recevied, it will throw an error
 };
 
+const PROVIDER_TYPES = {
+    WSS: "wss",
+    PUSHER: "pusher"
+};
+
 class WebsocketTicker extends EventEmitter {
     constructor(definition) {
         super();
@@ -64,15 +72,56 @@ class WebsocketTicker extends EventEmitter {
         this.isDisconnecting = false; // to restart connection if it's closed by server
         this.name = definition.NAME;
         this.lastTrade = null; // { price, volume, time}
-        this.wsUrl = definition.WSS_URL;
+
+        // if standard websocket connection
+        this.wssUrl = definition.WSS_URL;
         this.subscribePayload = definition.SUBSCRIBE_PAYLOAD;
         this.unsubscribePayload = definition.UNSUBSCRIBE_PAYLOAD;
+
+        // if pusher type connection
+        this.pusherAppKey = definition.PUSHER_APP_KEY;
+        this.pusherChannelName = definition.PUSHER_CHANNEL_NAME;
+        this.pusherChannelEventName = definition.PUSHER_CHANNEL_EVENT_NAME;
+
         this.processMessage = definition.processMessage;
-        this.heartbeatTimeout = definition.HEARTBEAT_TIMEOUT ? definition.HEARTBEAT_TIMEOUT : DEFAULT_HEARTBEAT_TIMEOUT;
+
         this.pingPayload = definition.PING_PAYLOAD;
         this.pingInterval = definition.PING_INTERVAL ? definition.PING_INTERVAL : DEFAULT_PING_INTERVAL;
+
+        this.providerType = this.wssUrl ? PROVIDER_TYPES.WSS : PROVIDER_TYPES.PUSHER;
+
+        if (this.providerType === PROVIDER_TYPES.WSS) {
+            this.heartbeatTimeout = definition.HEARTBEAT_TIMEOUT
+                ? definition.HEARTBEAT_TIMEOUT
+                : DEFAULT_WSS_HEARTBEAT_TIMEOUT;
+        } else {
+            this.heartbeatTimeout = definition.HEARTBEAT_TIMEOUT;
+        }
+
+        /* some basic param checks */
+
         if (this.pingInterval && !this.pingPayload) {
             throw new Error(this.name + " provider PING_INTERVAL is set but no PING_PAYLOAD defined");
+        }
+
+        if (this.wssUrl && this.pusherAppKey) {
+            throw new Error(this.name + " provider both WSS_URL and pusherAppKey defined. Use only one");
+        }
+
+        if (this.providerType === PROVIDER_TYPES.PUSHER) {
+            if (!this.pusherChannelName || !this.pusherChannelEventName) {
+                throw new Error(
+                    this.name +
+                        " provide both PUSHER_CHANNEL_NAME and PUSHER_CHANNEL_EVENT_NAME for PUSHER provider type"
+                );
+            }
+
+            if (definition.HEARTBEAT_TIMEOUT) {
+                log.warn(
+                    this.name,
+                    "is PUSHER provider and HEARTBEAT_TIMEOUT was set. It should be rather not provided so it will be automatically set based on activity_timeout provided pusher handshake "
+                );
+            }
         }
     }
 
@@ -80,99 +129,83 @@ class WebsocketTicker extends EventEmitter {
         try {
             ["SIGINT", "SIGHUP", "SIGTERM"].forEach(signal => process.on(signal, signal => this._exit(signal)));
 
-            this.ws = new WebSocket(this.wsUrl);
-            this.ws.onopen = () => {
-                log.debug(this.name, " websocket connected");
-                // subscribe
-                this.ws.send(JSON.stringify(this.subscribePayload));
-            };
+            switch (this.providerType) {
+            case PROVIDER_TYPES.WSS:
+                this.ws = new WebSocket(this.wssUrl);
 
-            this.ws.onerror = error => {
-                log.error(this.name, " error event:\n", error);
-            };
+                this.ws.onopen = () => {
+                    log.debug(this.name, " websocket connected");
+                    // subscribe
+                    this.ws.send(JSON.stringify(this.subscribePayload));
+                };
 
-            this.ws.onmessage = message => {
-                const data = JSON.parse(message.data);
-                const result = this.processMessage(message, data);
-                switch (result.type) {
-                case MESSAGE_TYPES.CONNECTED:
-                    log.debug(this.name, "connected.", JSON.stringify(data));
-                    if (this.pingInterval) {
-                        this.pingIntervalTimer = setInterval(this.ping.bind(this), this.pingInterval);
-                    }
-                    break;
+                this.ws.onerror = this._onProviderError.bind(this);
 
-                case MESSAGE_TYPES.SUBSCRIBED:
-                    log.info("\u2713", this.name, "subscribed.", JSON.stringify(result.data));
-                    if (result.data.chanId) {
-                        // Bitfines returns chanId which is required for unsubscribe
-                        this.unsubscribePayload.chanId = result.data.chanId;
-                    }
-                    this._heartbeatReceived();
-                    break;
+                this.ws.onmessage = this._onProviderMessage.bind(this);
 
-                case MESSAGE_TYPES.UNSUBSCRIBED:
-                    // NB:  GDAX not always sends
-                    log.debug(this.name, "UNsubscribed.", JSON.stringify(result.data));
-                    break;
+                this.ws.on("close", this._onProviderDisconnected.bind(this));
 
-                case MESSAGE_TYPES.HEARTBEAT:
-                    this._heartbeatReceived();
+                break;
 
-                    break;
+            case PROVIDER_TYPES.PUSHER:
+                this.pusherSocket = new Pusher(this.pusherAppKey);
 
-                case MESSAGE_TYPES.PONG:
-                    this._heartbeatReceived();
-                    break;
-
-                case MESSAGE_TYPES.TRADE: {
-                    this._heartbeatReceived();
-                    const trade = result.data;
-                    if (
-                        this.lastTrade === null ||
-                            (trade.tradeId && trade.tradeId > this.lastTrade.tradeId) ||
-                            trade.time > this.lastTrade.time
-                    ) {
-                        const prevTrade = this.lastTrade;
-                        this.lastTrade = trade;
-
-                        this.emit("trade", trade, prevTrade, this);
-
-                        if (!prevTrade || !prevTrade.price || trade.price !== prevTrade.price) {
-                            this.emit("pricechange", trade, prevTrade, this);
-                        }
-                    }
-
-                    break;
+                if (!this.heartbeatTimeout) {
+                    this.heartbeatTimeout = this.pusherSocket.config.activity_timeout + 60000;
                 }
 
-                case MESSAGE_TYPES.ERROR:
-                    log.error(this.name, " received an error message. Data:\n", result.data);
-                    break;
-                case MESSAGE_TYPES.IGNORE:
-                    break;
-                default:
-                    log.error(this.name, "received an unknown message type. Data:\n", result.data);
-                }
-            };
+                this.pusherSocket.connection.bind("error", this._onProviderError.bind(this));
+
+                this.pusherSocket.connection.bind("connected", this._onProviderConnected.bind(this));
+
+                this.pusherSocket.connection.bind("disconnected", this._onProviderDisconnected.bind(this));
+
+                this.pusherSocket.connection.bind("state_change", states => {
+                    // states = {previous: 'oldState', current: 'newState'}
+                    log.debug(this.name, "state change:", states);
+                });
+
+                /* Subscribe to PUSHER_CHANNEL_NAME */
+
+                this.pusherChannel = this.pusherSocket.subscribe(this.pusherChannelName);
+
+                this.pusherChannel.bind(
+                    "pusher:subscription_succeeded",
+                    this._onProviderSubscriptionSucceeded.bind(this)
+                );
+
+                this.pusherChannel.bind("pusher:subscription_error", error => {
+                    throw new Error(
+                        `Error: Can't subscribe to ${this.pusherChannelName} at ${this.name}. Error: ${error}`
+                    );
+                });
+
+                this.pusherChannel.bind(this.pusherChannelEventName, this._onProviderMessage.bind(this));
+
+                this.pusherSocket.connection.bind_global((/*event , data*/) => {
+                    // on any message not only this.pusherSocket.bind("pusher:pong", () => { });
+                    this._heartbeatReceived();
+                });
+
+                break;
+
+            default:
+                // we sholdn't get here...
+                throw new Error(
+                    "Error: Can't connect to " + this.name + ". Invalid provider type: " + this.providerType
+                );
+            }
         } catch (error) {
             throw new Error("Error: Can't connect to " + this.name + ". Details:\n" + error);
         }
-
-        this.ws.on("close", () => {
-            if (this.isDisconnecting) {
-                this.isDisconnecting = false;
-                clearTimeout(this.heartbeatTimeoutTimer);
-            } else {
-                log.warn(this.name, " websocket closed unexpectedly."); // heartbeatTimeout will reconnect
-                clearTimeout(this.pingIntervalTimer);
-            }
-        });
     }
 
     unsubscribe() {
-        if (this.unsubscribePayload) {
+        if (this.providerType === PROVIDER_TYPES.WSS && this.unsubscribePayload) {
             this.ws.send(JSON.stringify(this.unsubscribePayload));
+        } else {
+            this.pusherSocket.unsubscribe(this.pusherChannelName);
+            this.pusherChannel.unbind_all();
         }
     }
 
@@ -180,10 +213,28 @@ class WebsocketTicker extends EventEmitter {
         this.emit("disconnecting", this);
         clearTimeout(this.heartbeatTimeoutTimer);
         clearTimeout(this.pingIntervalTimer);
-        if (this.ws && this.ws.readyState === WebSocket.OPEN) {
-            this.unsubscribe();
-            this.isDisconnecting = true;
-            this.ws.close();
+        switch (this.providerType) {
+        case PROVIDER_TYPES.WSS:
+            if (this.ws && this.ws.readyState === WebSocket.OPEN) {
+                this.isDisconnecting = true;
+                this.unsubscribe();
+                this.ws.close();
+            }
+            break;
+        case PROVIDER_TYPES.PUSHER:
+            if (
+                this.pusherSocket.connection.state === "connected" ||
+                    this.pusherSocket.connection.state == "connecting"
+            ) {
+                this.isDisconnecting = true;
+                this.unsubscribe();
+                this.pusherSocket.unbind_all();
+                this.pusherSocket.disconnect();
+            }
+            break;
+        default:
+            // we sholdn't get here...
+            log.error("Error:", this.name + "disconnect(). Invalid provider type: " + this.providerType);
         }
     }
 
@@ -193,10 +244,99 @@ class WebsocketTicker extends EventEmitter {
     }
 
     ping() {
+        if (this.providerType !== PROVIDER_TYPES.WSS) {
+            throw new Error(this.name, "ping() is not supported for", this.providerType, "providerType");
+        }
         if (this.ws && this.ws.readyState === WebSocket.OPEN) {
             this.ws.send(JSON.stringify(this.pingPayload));
         } else {
             log.warn(this.name, "Warning: Tried to ping when websocket is not open. It's likely a bug, check code");
+        }
+    }
+
+    _onProviderError(error) {
+        log.error(this.name, " error event:\n", error);
+    }
+
+    _onProviderConnected(data) {
+        log.debug(this.name, "connected.", JSON.stringify(data));
+        if (this.pingInterval) {
+            this.pingIntervalTimer = setInterval(this.ping.bind(this), this.pingInterval);
+        }
+    }
+
+    _onProviderDisconnected() {
+        if (this.isDisconnecting) {
+            log.debug(this.name, "provider disconnected (expected)");
+            this.isDisconnecting = false;
+            clearTimeout(this.heartbeatTimeoutTimer);
+        } else {
+            log.warn(this.name, " websocket closed unexpectedly."); // heartbeatTimeout will reconnect
+            clearTimeout(this.pingIntervalTimer);
+        }
+    }
+
+    _onProviderSubscriptionSucceeded(data) {
+        log.info("\u2713", this.name, "subscribed.", JSON.stringify(data));
+        if (data.chanId) {
+            // Bitfinex returns chanId which is required for unsubscribe
+            this.unsubscribePayload.chanId = data.chanId;
+        }
+        this._heartbeatReceived();
+    }
+
+    _onProviderMessage(message) {
+        const result = this.processMessage(message);
+        switch (result.type) {
+        case MESSAGE_TYPES.CONNECTED:
+            this._onProviderConnected(JSON.stringify(result.data));
+            break;
+
+        case MESSAGE_TYPES.SUBSCRIBED:
+            this._onProviderSubscriptionSucceeded(result.data);
+            break;
+
+        case MESSAGE_TYPES.UNSUBSCRIBED:
+            // NB:  GDAX not always sends
+            log.debug(this.name, "UNsubscribed.", JSON.stringify(result.data));
+            break;
+
+        case MESSAGE_TYPES.HEARTBEAT:
+            this._heartbeatReceived();
+            break;
+
+        case MESSAGE_TYPES.PONG:
+            this._heartbeatReceived();
+            break;
+
+        case MESSAGE_TYPES.TRADE: {
+            this._heartbeatReceived();
+            const trade = result.data;
+            if (
+                this.lastTrade === null ||
+                    (trade.tradeId && trade.tradeId > this.lastTrade.tradeId) ||
+                    trade.time > this.lastTrade.time
+            ) {
+                const prevTrade = this.lastTrade;
+                this.lastTrade = trade;
+
+                this.emit("trade", trade, prevTrade, this);
+
+                if (!prevTrade || !prevTrade.price || trade.price !== prevTrade.price) {
+                    this.emit("pricechange", trade, prevTrade, this);
+                }
+            }
+
+            break;
+        }
+
+        case MESSAGE_TYPES.ERROR:
+            log.error(this.name, " received an error message. Data:\n", result.data);
+            break;
+        case MESSAGE_TYPES.IGNORE:
+            break;
+        default:
+            log.error(this.name, "received an unknown message type. Data:\n", result.data);
         }
     }
 

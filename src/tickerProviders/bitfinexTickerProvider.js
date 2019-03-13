@@ -25,7 +25,7 @@ const definition = {
         cid: new Date()
     },
 
-    processMessage: (msg, data) => {
+    processMessage: msg => {
         function parseBitFinexTrade(tradeData) {
             return {
                 price: tradeData[3],
@@ -34,6 +34,7 @@ const definition = {
                 tradeId: tradeData[0]
             };
         }
+        const data = JSON.parse(msg.data);
         switch (data.event) {
         case "info":
             return { type: WebsocketTicker.MESSAGE_TYPES.CONNECTED, data };
