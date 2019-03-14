@@ -1,12 +1,14 @@
 /* Kraken
  https://www.kraken.com/features/websocket-api
   https://www.kraken.com/features/websocket-api#message-ticker
-
-  NB: kraken doesn't return snapshot when first subscribed. Ie. lastTrade will only be updated when first trade happens.
-    potential solution is to use OHLC subscription but that doesn't return last trade volume & time. could subscribe / unsubscribe at connect...
-    see: https://www.kraken.com/features/websocket-api#message-ohlc
+  https://www.kraken.com/features/api#get-ticker-info
 */
+const fetch = require("node-fetch");
 const WebsocketTicker = require("./WebsocketTicker.js");
+
+// used for initial fetch because kraken doesn't return snapshot when first subscribed.
+// Ie. we need to fetch trades after connection to update lastTicker otherwise we would only have price after a trade
+const KRAKEN_HTTP_URL = "https://api.kraken.com/0/public/Ticker?pair=ETHEUR";
 
 const definition = {
     NAME: "KRAKEN",
@@ -53,6 +55,15 @@ const definition = {
                 };
             }
         }
+    },
+
+    fetchCurrentTicker: async () => {
+        const res = await fetch(KRAKEN_HTTP_URL);
+        const data = (await res.json()).result.XETHZEUR;
+
+        // https://www.kraken.com/features/api#get-ticker-info
+        const tickerData = { price: parseFloat(data.c[0]), volume: parseFloat(data.c[1]), time: new Date() };
+        return tickerData;
     }
 };
 

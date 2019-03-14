@@ -84,6 +84,12 @@ class WebsocketTicker extends EventEmitter {
         this.pusherChannelEventName = definition.PUSHER_CHANNEL_EVENT_NAME;
 
         this.processMessage = definition.processMessage;
+        // some providers doesn't send a snapshot after subscription.
+        // In that case implement this function in definition and return a tickerInfo object
+        //   see example with krakenTickerProvider
+        // if provider returns a snapshot after subscription then process message at processMessage and
+        //       leave fetchCurrentTicker as null in definition (see gdaxTickerProvider for example)
+        this.fetchCurrentTicker = definition.fetchCurrentTicker;
 
         this.pingPayload = definition.PING_PAYLOAD;
         this.pingInterval = definition.PING_INTERVAL ? definition.PING_INTERVAL : DEFAULT_PING_INTERVAL;
@@ -128,6 +134,9 @@ class WebsocketTicker extends EventEmitter {
     connectAndSubscribe() {
         try {
             ["SIGINT", "SIGHUP", "SIGTERM"].forEach(signal => process.on(signal, signal => this._exit(signal)));
+
+            // set initial price for providers which doesn't return initial snapshot after subscription
+            this._fetchInitialTickerInfo();
 
             switch (this.providerType) {
             case PROVIDER_TYPES.WSS:
@@ -337,6 +346,21 @@ class WebsocketTicker extends EventEmitter {
             break;
         default:
             log.error(this.name, "received an unknown message type. Data:\n", result.data);
+        }
+    }
+
+    async _fetchInitialTickerInfo() {
+        // only works for tickerProviders where fetchCurrentTicker is implemented
+        try {
+            if (this.fetchCurrentTicker) {
+                const tickerInfo = await this.fetchCurrentTicker();
+                if (!this.lastTrade || !this.lastTrade.price || this.lastTrade.price === 0) {
+                    this.lastTrade = tickerInfo;
+                }
+            }
+        } catch (error) {
+            log.error(this.name, "can't fetch initial ticker info. fetchCurrentTicker failed. ", error);
+            process.exit(1);
         }
     }
 
