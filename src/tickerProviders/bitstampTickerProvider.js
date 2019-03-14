@@ -2,7 +2,12 @@
  https://www.bitstamp.net/websocket/
  https://docs.pro.coinbase.com/?r=1#the-ticker-channel
 */
+const fetch = require("node-fetch");
 const WebsocketTicker = require("./WebsocketTicker.js");
+
+// used for initial fetch because kraken doesn't return snapshot when first subscribed.
+// Ie. we need to fetch trades after connection to update lastTicker otherwise we would only have price after a trade
+const BITSTAMP_HTTP_URL = "https://www.bitstamp.net/api/v2/ticker/etheur";
 
 const definition = {
     NAME: "BITSTAMP",
@@ -24,6 +29,18 @@ const definition = {
                 tradeId: parseInt(msg.id)
             }
         };
+    },
+
+    fetchCurrentTicker: async () => {
+        const res = await fetch(BITSTAMP_HTTP_URL);
+        const data = await res.json();
+
+        // https://www.bitstamp.net/api/
+        const tickerData = {
+            price: parseFloat(data.last),
+            /* volume is not returned volume: null ,*/ time: new Date(parseInt(data.timestamp) * 1000)
+        };
+        return tickerData;
     }
 };
 
