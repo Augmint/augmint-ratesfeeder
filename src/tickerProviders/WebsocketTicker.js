@@ -68,8 +68,10 @@ const PROVIDER_TYPES = {
 class WebsocketTicker extends EventEmitter {
     constructor(definition) {
         super();
-        this.lastHeartbeat = null;
         this.isDisconnecting = false; // to restart connection if it's closed by server
+        ["SIGINT", "SIGHUP", "SIGTERM"].forEach(signal => process.on(signal, signal => this._exit(signal)));
+
+        this.lastHeartbeat = null;
         this.name = definition.NAME;
         this.lastTrade = null; // { price, volume, time}
 
@@ -133,76 +135,78 @@ class WebsocketTicker extends EventEmitter {
 
     connectAndSubscribe() {
         try {
-            ["SIGINT", "SIGHUP", "SIGTERM"].forEach(signal => process.on(signal, signal => this._exit(signal)));
+            if (!this.isDisconnecting) {
+                // set initial price for providers which doesn't return initial snapshot after subscription
+                this._fetchInitialTickerInfo();
 
-            // set initial price for providers which doesn't return initial snapshot after subscription
-            this._fetchInitialTickerInfo();
+                switch (this.providerType) {
+                case PROVIDER_TYPES.WSS:
+                    this.ws = new WebSocket(this.wssUrl);
 
-            switch (this.providerType) {
-            case PROVIDER_TYPES.WSS:
-                this.ws = new WebSocket(this.wssUrl);
+                    this.ws.onopen = () => {
+                        log.debug(this.name, " websocket connected");
+                        // subscribe
+                        if (!this.isDisconnecting) {
+                            this.ws.send(JSON.stringify(this.subscribePayload));
+                        }
+                    };
 
-                this.ws.onopen = () => {
-                    log.debug(this.name, " websocket connected");
-                    // subscribe
-                    this.ws.send(JSON.stringify(this.subscribePayload));
-                };
+                    this.ws.onerror = this._onProviderError.bind(this);
 
-                this.ws.onerror = this._onProviderError.bind(this);
+                    this.ws.onmessage = this._onProviderMessage.bind(this);
 
-                this.ws.onmessage = this._onProviderMessage.bind(this);
+                    this.ws.on("close", this._onProviderDisconnected.bind(this));
 
-                this.ws.on("close", this._onProviderDisconnected.bind(this));
+                    break;
 
-                break;
+                case PROVIDER_TYPES.PUSHER:
+                    this.pusherSocket = new Pusher(this.pusherAppKey);
 
-            case PROVIDER_TYPES.PUSHER:
-                this.pusherSocket = new Pusher(this.pusherAppKey);
+                    if (!this.heartbeatTimeout) {
+                        this.heartbeatTimeout = this.pusherSocket.config.activity_timeout + 60000;
+                    }
 
-                if (!this.heartbeatTimeout) {
-                    this.heartbeatTimeout = this.pusherSocket.config.activity_timeout + 60000;
-                }
+                    this.pusherSocket.connection.bind("error", this._onProviderError.bind(this));
 
-                this.pusherSocket.connection.bind("error", this._onProviderError.bind(this));
+                    this.pusherSocket.connection.bind("connected", this._onProviderConnected.bind(this));
 
-                this.pusherSocket.connection.bind("connected", this._onProviderConnected.bind(this));
+                    this.pusherSocket.connection.bind("disconnected", this._onProviderDisconnected.bind(this));
 
-                this.pusherSocket.connection.bind("disconnected", this._onProviderDisconnected.bind(this));
+                    this.pusherSocket.connection.bind("state_change", states => {
+                        // states = {previous: 'oldState', current: 'newState'}
+                        log.debug(this.name, "state change:", states);
+                    });
 
-                this.pusherSocket.connection.bind("state_change", states => {
-                    // states = {previous: 'oldState', current: 'newState'}
-                    log.debug(this.name, "state change:", states);
-                });
+                    /* Subscribe to PUSHER_CHANNEL_NAME */
 
-                /* Subscribe to PUSHER_CHANNEL_NAME */
+                    this.pusherChannel = this.pusherSocket.subscribe(this.pusherChannelName);
 
-                this.pusherChannel = this.pusherSocket.subscribe(this.pusherChannelName);
-
-                this.pusherChannel.bind(
-                    "pusher:subscription_succeeded",
-                    this._onProviderSubscriptionSucceeded.bind(this)
-                );
-
-                this.pusherChannel.bind("pusher:subscription_error", error => {
-                    throw new Error(
-                        `Error: Can't subscribe to ${this.pusherChannelName} at ${this.name}. Error: ${error}`
+                    this.pusherChannel.bind(
+                        "pusher:subscription_succeeded",
+                        this._onProviderSubscriptionSucceeded.bind(this)
                     );
-                });
 
-                this.pusherChannel.bind(this.pusherChannelEventName, this._onProviderMessage.bind(this));
+                    this.pusherChannel.bind("pusher:subscription_error", error => {
+                        throw new Error(
+                            `Error: Can't subscribe to ${this.pusherChannelName} at ${this.name}. Error: ${error}`
+                        );
+                    });
 
-                this.pusherSocket.connection.bind_global((/*event , data*/) => {
-                    // on any message not only this.pusherSocket.bind("pusher:pong", () => { });
-                    this._heartbeatReceived();
-                });
+                    this.pusherChannel.bind(this.pusherChannelEventName, this._onProviderMessage.bind(this));
 
-                break;
+                    this.pusherSocket.connection.bind_global((/*event , data*/) => {
+                        // on any message not only this.pusherSocket.bind("pusher:pong", () => { });
+                        this._heartbeatReceived();
+                    });
 
-            default:
-                // we sholdn't get here...
-                throw new Error(
-                    "Error: Can't connect to " + this.name + ". Invalid provider type: " + this.providerType
-                );
+                    break;
+
+                default:
+                    // we sholdn't get here...
+                    throw new Error(
+                        "Error: Can't connect to " + this.name + ". Invalid provider type: " + this.providerType
+                    );
+                }
             }
         } catch (error) {
             throw new Error("Error: Can't connect to " + this.name + ". Details:\n" + error);
@@ -219,9 +223,12 @@ class WebsocketTicker extends EventEmitter {
     }
 
     disconnect() {
+        this.isDisconnecting = true;
         this.emit("disconnecting", this);
+
         clearTimeout(this.heartbeatTimeoutTimer);
         clearTimeout(this.pingIntervalTimer);
+
         switch (this.providerType) {
         case PROVIDER_TYPES.WSS:
             if (this.ws && this.ws.readyState === WebSocket.OPEN) {
@@ -230,17 +237,20 @@ class WebsocketTicker extends EventEmitter {
                 this.ws.close();
             }
             break;
+
         case PROVIDER_TYPES.PUSHER:
             if (
-                this.pusherSocket.connection.state === "connected" ||
+                (this.pusherSocket &&
+                        this.pusherSocket.connection &&
+                        this.pusherSocket.connection.state === "connected") ||
                     this.pusherSocket.connection.state == "connecting"
             ) {
-                this.isDisconnecting = true;
                 this.unsubscribe();
                 this.pusherSocket.unbind_all();
                 this.pusherSocket.disconnect();
             }
             break;
+
         default:
             // we sholdn't get here...
             log.error("Error:", this.name + "disconnect(). Invalid provider type: " + this.providerType);
@@ -253,13 +263,15 @@ class WebsocketTicker extends EventEmitter {
     }
 
     ping() {
-        if (this.providerType !== PROVIDER_TYPES.WSS) {
-            throw new Error(this.name, "ping() is not supported for", this.providerType, "providerType");
-        }
-        if (this.ws && this.ws.readyState === WebSocket.OPEN) {
-            this.ws.send(JSON.stringify(this.pingPayload));
-        } else {
-            log.warn(this.name, "Warning: Tried to ping when websocket is not open. It's likely a bug, check code");
+        if (!this.isDisconnecting) {
+            if (this.providerType !== PROVIDER_TYPES.WSS) {
+                throw new Error(this.name, "ping() is not supported for", this.providerType, "providerType");
+            }
+            if (this.ws && this.ws.readyState === WebSocket.OPEN) {
+                this.ws.send(JSON.stringify(this.pingPayload));
+            } else {
+                log.warn(this.name, "Warning: Tried to ping when websocket is not open. It's likely a bug, check code");
+            }
         }
     }
 
@@ -269,7 +281,7 @@ class WebsocketTicker extends EventEmitter {
 
     _onProviderConnected(data) {
         log.debug(this.name, "connected.", JSON.stringify(data));
-        if (this.pingInterval) {
+        if (this.pingInterval && !this.isDisconnecting) {
             this.pingIntervalTimer = setInterval(this.ping.bind(this), this.pingInterval);
         }
     }
@@ -373,7 +385,9 @@ class WebsocketTicker extends EventEmitter {
         // reset heartbeat timer anytime a meaningful message received (heartbeat, trade or subscribe)
         this.lastHeartbeat = new Date();
         clearTimeout(this.heartbeatTimeoutTimer);
-        this.heartbeatTimeoutTimer = setTimeout(this._heartbeatTimedOut.bind(this), this.heartbeatTimeout);
+        if (!this.isDisconnecting) {
+            this.heartbeatTimeoutTimer = setTimeout(this._heartbeatTimedOut.bind(this), this.heartbeatTimeout);
+        }
     }
 
     _heartbeatTimedOut() {
