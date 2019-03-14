@@ -86,15 +86,25 @@ yarn install # if there were any node package changes in packages.json
     `yarn ganache:run` and in separate console:  
     `yarn contracts:migrate`
 
-1.  Run tests  
-    _Creates a local http server, that emulates different price changes. NOT WOKRING YET_
+1.  Run tests
 
     ```
-    truffle test
+    yarn test
     ```
 
 ### 4. Feeding
 
+#### Local
+
+1. `yarn contracts:runmigrate`
+1. when migrate finished, in a separate console: `yarn start`
+
+or for production
+
+#### Production (rinkeby or mainnet)
+
+See `.env.production` and set your keys in `.env.production.local`
+
 ```
-yarn start
+yarn start:production
 ```
