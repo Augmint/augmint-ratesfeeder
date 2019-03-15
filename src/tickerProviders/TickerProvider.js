@@ -138,6 +138,10 @@ class TickerProvider extends EventEmitter {
         }
     }
 
+    getStatus() {
+        return { name: this.name, lastTicker: this.lastTicker, lastHeartbeat: this.lastHeartbeat };
+    }
+
     connectAndSubscribe() {
         try {
             if (!this.isDisconnecting) {

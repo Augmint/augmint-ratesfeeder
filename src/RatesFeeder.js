@@ -162,7 +162,7 @@ class RatesFeeder {
                 } livePrice: ${livePrice} livePriceDifference: ${(livePriceDifference * 100).toFixed(2)} %`
             );
 
-            const tickersInfo = this.tickers.map(t => ({ name: t.name, lastTicker: t.lastTicker }));
+            const tickersInfo = this.tickers.map(t => t.getStatus());
             this.lastTickerCheckResult.checkedAt = new Date();
             this.lastTickerCheckResult[CCY] = {
                 currentAugmintRate,
