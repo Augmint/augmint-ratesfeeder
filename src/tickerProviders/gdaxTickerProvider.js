@@ -2,7 +2,7 @@
  https://docs.pro.coinbase.com/#get-product-ticker
  https://docs.pro.coinbase.com/?r=1#the-ticker-channel
 */
-const WebsocketTicker = require("./WebsocketTicker.js");
+const TickerProvider = require("./TickerProvider.js");
 
 const definition = {
     NAME: "GDAX",
@@ -22,7 +22,7 @@ const definition = {
         const data = JSON.parse(msg.data);
         switch (data.type) {
         case "error":
-            return { type: WebsocketTicker.MESSAGE_TYPES.ERROR, data };
+            return { type: TickerProvider.MESSAGE_TYPES.ERROR, data };
 
         case "ticker": {
             // GDAX returns a price without volume & time right after subscribe
@@ -30,7 +30,7 @@ const definition = {
             const time = data.time ? new Date(data.time) : new Date();
 
             return {
-                type: WebsocketTicker.MESSAGE_TYPES.TICKER_UPDATE,
+                type: TickerProvider.MESSAGE_TYPES.TICKER_UPDATE,
                 data: {
                     price: parseFloat(data.price),
                     volume,
@@ -42,16 +42,16 @@ const definition = {
 
         case "subscriptions":
             if (data.channels && data.channels.length > 0) {
-                return { type: WebsocketTicker.MESSAGE_TYPES.SUBSCRIBED, data };
+                return { type: TickerProvider.MESSAGE_TYPES.SUBSCRIBED, data };
             } else {
-                return { type: WebsocketTicker.MESSAGE_TYPES.UNSUBSCRIBED, data };
+                return { type: TickerProvider.MESSAGE_TYPES.UNSUBSCRIBED, data };
             }
 
         case "heartbeat":
-            return { type: WebsocketTicker.MESSAGE_TYPES.HEARTBEAT, data };
+            return { type: TickerProvider.MESSAGE_TYPES.HEARTBEAT, data };
 
         default:
-            return { type: WebsocketTicker.MESSAGE_TYPES.UNKNOWN, data };
+            return { type: TickerProvider.MESSAGE_TYPES.UNKNOWN, data };
         }
     }
 };

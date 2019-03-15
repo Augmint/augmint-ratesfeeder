@@ -23,7 +23,7 @@ const contractsHelper = require("./contractsHelper.js");
 const TokenAEur = require("./abiniser/abis/TokenAEur_ABI_2ea91d34a7bfefc8f38ef0e8a5ae24a5.json");
 const Rates = require("./abiniser/abis/Rates_ABI_73a17ebb0acc71773371c6a8e1c8e6ce.json");
 
-const CCY = "EUR"; // only EUR is suported by WebsocketTicker providers ATM
+const CCY = "EUR"; // only EUR is suported by TickerProvider providers ATM
 const SET_RATE_GAS_LIMIT = 80000;
 
 const median = values => {
@@ -42,7 +42,7 @@ const median = values => {
 
 class RatesFeeder {
     constructor(tickers) {
-        this.tickers = tickers; // array of WebsocketTicker objects
+        this.tickers = tickers; // array of TickerProvider objects
         // list of tickernames:
         this.tickerNames = this.tickers.reduce(
             (accum, ticker, idx) => (idx == 0 ? ticker.name : accum + ", " + ticker.name),

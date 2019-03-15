@@ -4,7 +4,7 @@
   https://www.kraken.com/features/api#get-ticker-info
 */
 const fetch = require("node-fetch");
-const WebsocketTicker = require("./WebsocketTicker.js");
+const TickerProvider = require("./TickerProvider.js");
 
 // used for initial fetch because kraken doesn't return snapshot when first subscribed.
 // Ie. we need to fetch trades after connection to update lastTicker otherwise we would only have price after a trade
@@ -32,25 +32,25 @@ const definition = {
         const data = JSON.parse(msg.data);
         switch (data.event) {
         case "systemStatus":
-            return { type: WebsocketTicker.MESSAGE_TYPES.CONNECTED, data };
+            return { type: TickerProvider.MESSAGE_TYPES.CONNECTED, data };
         case "subscriptionStatus":
             if (data.status === "subscribed") {
-                return { type: WebsocketTicker.MESSAGE_TYPES.SUBSCRIBED, data };
+                return { type: TickerProvider.MESSAGE_TYPES.SUBSCRIBED, data };
             } else if (data.status === "unsubscribed") {
-                return { type: WebsocketTicker.MESSAGE_TYPES.UNSUBSCRIBED, data };
+                return { type: TickerProvider.MESSAGE_TYPES.UNSUBSCRIBED, data };
             } else {
-                return { type: WebsocketTicker.MESSAGE_TYPES.UNKNOWN, data };
+                return { type: TickerProvider.MESSAGE_TYPES.UNKNOWN, data };
             }
         case "heartbeat":
-            return { type: WebsocketTicker.MESSAGE_TYPES.HEARTBEAT, data };
+            return { type: TickerProvider.MESSAGE_TYPES.HEARTBEAT, data };
         default:
             if ("event" in data) {
-                return { type: WebsocketTicker.MESSAGE_TYPES.UNKNOWN, data };
+                return { type: TickerProvider.MESSAGE_TYPES.UNKNOWN, data };
             } else {
                 // It's a ticker because no event prop present
                 // https://www.kraken.com/features/websocket-api#message-ticker
                 return {
-                    type: WebsocketTicker.MESSAGE_TYPES.TICKER_UPDATE,
+                    type: TickerProvider.MESSAGE_TYPES.TICKER_UPDATE,
                     data: { price: parseFloat(data[1].c[0]), volume: parseFloat(data[1].c[1]), time: new Date() } // Kraken doesn't return trade time nor seq
                 };
             }

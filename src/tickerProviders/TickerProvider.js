@@ -1,4 +1,4 @@
-/* Generic class to handle websocket info from exchanges
+/* Generic class to handle ticker info from exchanges (websocket or pusher)
 
 maintains lastTicker as: {price, volume, time, tradeId}
 depending on ticker provider implementation it updates the last trade when first launched.
@@ -32,7 +32,7 @@ Subscribe to the following events emmited:
     // on intentional disconnect
     <ticker instance>.on("disconnecting", (tickerProvider) => {...});
 
-    // when server closed connection and WebsocketTicker tries to reconnect
+    // when server closed connection and TickerProvider tries to reconnect
     <ticker instance>.on("heartbeattimeout", (tickerProvider) => {...});
 
 TODO:
@@ -47,7 +47,7 @@ TODO:
 */
 
 const ulog = require("ulog");
-const log = ulog("WebsocketTicker");
+const log = ulog("TickerProvider");
 const WebSocket = require("ws");
 const Pusher = require("pusher-js");
 const EventEmitter = require("events");
@@ -70,7 +70,7 @@ const PROVIDER_TYPES = {
     PUSHER: "pusher"
 };
 
-class WebsocketTicker extends EventEmitter {
+class TickerProvider extends EventEmitter {
     constructor(definition) {
         super();
         this.isDisconnecting = false; // to restart connection if it's closed by server
@@ -407,4 +407,4 @@ class WebsocketTicker extends EventEmitter {
     }
 }
 
-module.exports = WebsocketTicker;
+module.exports = TickerProvider;
