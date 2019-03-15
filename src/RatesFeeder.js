@@ -23,7 +23,7 @@ const contractsHelper = require("./contractsHelper.js");
 const TokenAEur = require("./abiniser/abis/TokenAEur_ABI_2ea91d34a7bfefc8f38ef0e8a5ae24a5.json");
 const Rates = require("./abiniser/abis/Rates_ABI_73a17ebb0acc71773371c6a8e1c8e6ce.json");
 
-const CCY = "EUR"; // only EUR is suported by WebsocketTicker providers ATM
+const CCY = "EUR"; // only EUR is suported by TickerProvider providers ATM
 const SET_RATE_GAS_LIMIT = 80000;
 
 const median = values => {
@@ -42,7 +42,7 @@ const median = values => {
 
 class RatesFeeder {
     constructor(tickers) {
-        this.tickers = tickers; // array of WebsocketTicker objects
+        this.tickers = tickers; // array of TickerProvider objects
         // list of tickernames:
         this.tickerNames = this.tickers.reduce(
             (accum, ticker, idx) => (idx == 0 ? ticker.name : accum + ", " + ticker.name),
@@ -144,33 +144,36 @@ class RatesFeeder {
             log.debug(
                 "    ",
                 t.name,
-                t.lastTrade ? t.lastTrade.price : "null",
-                t.lastTrade ? t.lastTrade.time : "null"
+                t.lastTicker ? t.lastTicker.price : "null",
+                t.lastTicker ? t.lastTicker.time : "null"
             );
         });
 
         const currentAugmintRate = await this.getAugmintRate(CCY);
 
         const livePrice = this.calculateAugmintPrice(this.tickers);
+        const livePriceDifference =
+            livePrice > 0
+                ? Math.round((Math.abs(livePrice - currentAugmintRate.price) / currentAugmintRate.price) * 10000) /
+                  10000
+                : null;
+
+        log.debug(
+            `    checkTickerPrice() currentAugmintRate[${CCY}]: ${
+                currentAugmintRate.price
+            } livePrice: ${livePrice} livePriceDifference: ${(livePriceDifference * 100).toFixed(2)} %`
+        );
+
+        const tickersInfo = this.tickers.map(t => t.getStatus());
+        this.lastTickerCheckResult.checkedAt = new Date();
+        this.lastTickerCheckResult[CCY] = {
+            currentAugmintRate,
+            livePrice,
+            livePriceDifference,
+            tickersInfo
+        };
+
         if (livePrice > 0) {
-            const livePriceDifference =
-                Math.round((Math.abs(livePrice - currentAugmintRate.price) / currentAugmintRate.price) * 10000) / 10000;
-
-            log.debug(
-                `    checkTickerPrice() currentAugmintRate[${CCY}]: ${
-                    currentAugmintRate.price
-                } livePrice: ${livePrice} livePriceDifference: ${(livePriceDifference * 100).toFixed(2)} %`
-            );
-
-            const tickersInfo = this.tickers.map(t => ({ name: t.name, lastTrade: t.lastTrade }));
-            this.lastTickerCheckResult.checkedAt = new Date();
-            this.lastTickerCheckResult[CCY] = {
-                currentAugmintRate,
-                livePrice,
-                livePriceDifference,
-                tickersInfo
-            };
-
             if (livePriceDifference * 100 > parseFloat(process.env.LIVE_PRICE_THRESHOLD_PT)) {
                 await this.promiseTimeout(process.env.SETRATE_TX_TIMEOUT, this.updatePrice(CCY, livePrice)).catch(
                     error => {
@@ -208,8 +211,8 @@ class RatesFeeder {
     calculateAugmintPrice(tickers) {
         // ignore 0 or null prices (exchange down or no price info yet)
         const prices = tickers
-            .filter(ticker => ticker.lastTrade && ticker.lastTrade.price > 0)
-            .map(t => t.lastTrade.price);
+            .filter(ticker => ticker.lastTicker && ticker.lastTicker.price > 0)
+            .map(t => t.lastTicker.price);
         let augmintPrice = median(prices);
         augmintPrice = Math.round(augmintPrice * this.decimalsDiv) / this.decimalsDiv;
 

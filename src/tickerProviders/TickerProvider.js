@@ -1,6 +1,6 @@
-/* Generic class to handle websocket info from exchanges
+/* Generic class to handle ticker info from exchanges (websocket or pusher)
 
-maintains lastTrade as: {price, volume, time, tradeId}
+maintains lastTicker as: {price, volume, time, tradeId}
 depending on ticker provider implementation it updates the last trade when first launched.
 call connectAndSubscribe() after created
 
@@ -17,32 +17,37 @@ constructor receives definition object :
     PING_PAYLOAD: {},         // only required if PING_INTERVAL is not null
 
     processMessage: (msg, data) => {} // should  process incoming msg and data and return { type: <MESSAGE_TYPES>, data}.
-                format of data in case of MESSAGE_TYPES.TRADE is {price, volume, time, tradeid} volume and tradeid is optional
+                format of data in case of MESSAGE_TYPES.TICKER_UPDATE is {price, volume, time, tradeid} volume and tradeid is optional
 
     // see  example definition in *tickerProvider.js files implemented for a few exchanges
 }
 
 Subscribe to the following events emmited:
     // on Every trade:
-    <ticker instance>.on("trade", (trade, prevTrade, tickerInstance) => { ... } );
+    <ticker instance>.on("trade", (newTicker, prevTicker, tickerProvider) => { ... } );
 
     // only if price changed after trade:
-    <ticker instance>.on("pricechange", (trade, prevTrade, tickerInstance) => { ... } ); // only when
+    <ticker instance>.on("pricechange", (newTicker, prevTicker, tickerProvider) => { ... } ); // only when
 
     // on intentional disconnect
-    <ticker instance>.on("disconnecting", (tickerInstance) => {...});
+    <ticker instance>.on("disconnecting", (tickerProvider) => {...});
 
-    // when server closed connection and WebsocketTicker tries to reconnect
-    <ticker instance>.on("heartbeattimeout", (tickerInstance) => {...});
+    // when server closed connection and TickerProvider tries to reconnect
+    <ticker instance>.on("heartbeattimeout", (tickerProvider) => {...});
 
 TODO:
-Might be better to use candle data but gdax doesn't support it:
-https://github.com/coinbase/gdax-node/issues/203
+-  Might be better to use vwap or candle data but
+   - gdax doesn't support it: https://github.com/coinbase/gdax-node/issues/203
+   - BitStamp only returns via REST and hourly vwap window only (https://www.bitstamp.net/api/v2/ticker_hour/{currency_pair}/) - would require polling
+   - Kraken should be fine, it returns in ohlc channel. vwap window can be set to 1 / 5 / 15 / 30 etc. minutes
+    Maybe use vwap if available from provider otherwise last trade price?
+- reconsider if we would be better of polling REST instead of websocket - would result a much simpler code
+- BitStamp released V2 websocket API which is without pusher - we could get rid of pusher specific code
 
 */
 
 const ulog = require("ulog");
-const log = ulog("WebsocketTicker");
+const log = ulog("TickerProvider");
 const WebSocket = require("ws");
 const Pusher = require("pusher-js");
 const EventEmitter = require("events");
@@ -53,7 +58,7 @@ const MESSAGE_TYPES = {
     SUBSCRIBED: "subscribed",
     UNSUBSCRIBED: "unsubscribed",
     HEARTBEAT: "heartbeat", // heartbeat msg received from server
-    TRADE: "trade",
+    TICKER_UPDATE: "tickerupdate",
     ERROR: "error",
     PING: "pong", // return if msg is a server response to our ping
     IGNORE: "ignore",
@@ -65,7 +70,7 @@ const PROVIDER_TYPES = {
     PUSHER: "pusher"
 };
 
-class WebsocketTicker extends EventEmitter {
+class TickerProvider extends EventEmitter {
     constructor(definition) {
         super();
         this.isDisconnecting = false; // to restart connection if it's closed by server
@@ -73,7 +78,9 @@ class WebsocketTicker extends EventEmitter {
 
         this.lastHeartbeat = null;
         this.name = definition.NAME;
-        this.lastTrade = null; // { price, volume, time}
+        this.lastTicker = null; // { price, volume, time}
+        this.connectedAt = null;
+        this.reconnectCount = null; // first connect will set to 0, any further connect increases
 
         // if standard websocket connection
         this.wssUrl = definition.WSS_URL;
@@ -131,6 +138,16 @@ class WebsocketTicker extends EventEmitter {
                 );
             }
         }
+    }
+
+    getStatus() {
+        return {
+            name: this.name,
+            lastTicker: this.lastTicker,
+            lastHeartbeat: this.lastHeartbeat,
+            connectedAt: this.connectedAt,
+            reconnectCount: this.reconnectCount
+        };
     }
 
     connectAndSubscribe() {
@@ -281,6 +298,12 @@ class WebsocketTicker extends EventEmitter {
 
     _onProviderConnected(data) {
         log.debug(this.name, "connected.", JSON.stringify(data));
+        this.connectedAt = new Date();
+        if (this.reconnectCount) {
+            this.reconnectCount++;
+        } else {
+            this.reconnectCount = 0; // first connect
+        }
         if (this.pingInterval && !this.isDisconnecting) {
             this.pingIntervalTimer = setInterval(this.ping.bind(this), this.pingInterval);
         }
@@ -330,21 +353,21 @@ class WebsocketTicker extends EventEmitter {
             this._heartbeatReceived();
             break;
 
-        case MESSAGE_TYPES.TRADE: {
+        case MESSAGE_TYPES.TICKER_UPDATE: {
             this._heartbeatReceived();
-            const trade = result.data;
+            const ticker = result.data;
             if (
-                this.lastTrade === null ||
-                    (trade.tradeId && trade.tradeId > this.lastTrade.tradeId) ||
-                    trade.time > this.lastTrade.time
+                this.lastTicker === null ||
+                    (ticker.tradeId && ticker.tradeId > this.lastTicker.tradeId) ||
+                    ticker.time > this.lastTicker.time
             ) {
-                const prevTrade = this.lastTrade;
-                this.lastTrade = trade;
+                const prevTicker = this.lastTicker;
+                this.lastTicker = ticker;
 
-                this.emit("trade", trade, prevTrade, this);
+                this.emit("trade", ticker, prevTicker, this);
 
-                if (!prevTrade || !prevTrade.price || trade.price !== prevTrade.price) {
-                    this.emit("pricechange", trade, prevTrade, this);
+                if (!prevTicker || !prevTicker.price || ticker.price !== prevTicker.price) {
+                    this.emit("pricechange", ticker, prevTicker, this);
                 }
             }
 
@@ -366,8 +389,8 @@ class WebsocketTicker extends EventEmitter {
         try {
             if (this.fetchCurrentTicker) {
                 const tickerInfo = await this.fetchCurrentTicker();
-                if (!this.lastTrade || !this.lastTrade.price || this.lastTrade.price === 0) {
-                    this.lastTrade = tickerInfo;
+                if (!this.lastTicker || !this.lastTicker.price || this.lastTicker.price === 0) {
+                    this.lastTicker = tickerInfo;
                 }
             }
         } catch (error) {
@@ -402,4 +425,4 @@ class WebsocketTicker extends EventEmitter {
     }
 }
 
-module.exports = WebsocketTicker;
+module.exports = TickerProvider;

@@ -4,7 +4,7 @@ https://docs.bitfinex.com/v2/reference#ws-public-trades
 
 NB: not used b/c bitfinex price is out by ca. 3% https://www.reddit.com/r/CryptoCurrency/comments/abvbwd/why_is_btc_price_on_bitfinex_so_much_higher_than/
 */
-const WebsocketTicker = require("./WebsocketTicker.js");
+const TickerProvider = require("./TickerProvider.js");
 
 const definition = {
     NAME: "BITFINEX",
@@ -34,24 +34,30 @@ const definition = {
                 tradeId: tradeData[0]
             };
         }
+
         const data = JSON.parse(msg.data);
+
         switch (data.event) {
         case "info":
-            return { type: WebsocketTicker.MESSAGE_TYPES.CONNECTED, data };
+            return { type: TickerProvider.MESSAGE_TYPES.CONNECTED, data };
+
         case "subscribed":
-            return { type: WebsocketTicker.MESSAGE_TYPES.SUBSCRIBED, data };
+            return { type: TickerProvider.MESSAGE_TYPES.SUBSCRIBED, data };
+
         case "unsubscribed":
-            return { type: WebsocketTicker.MESSAGE_TYPES.UNSUBSCRIBED, data };
+            return { type: TickerProvider.MESSAGE_TYPES.UNSUBSCRIBED, data };
+
         case "pong":
-            return { type: WebsocketTicker.MESSAGE_TYPES.PONG, data };
+            return { type: TickerProvider.MESSAGE_TYPES.PONG, data };
+
         default:
             if (data[1] === "hb") {
-                return { type: WebsocketTicker.MESSAGE_TYPES.HEARTBEAT, data };
+                return { type: TickerProvider.MESSAGE_TYPES.HEARTBEAT, data };
             } else if (data[1] === "tu") {
                 // confirmed trade with tradeid
                 // https://docs.bitfinex.com/v2/reference#ws-public-trades
                 return {
-                    type: WebsocketTicker.MESSAGE_TYPES.TRADE,
+                    type: TickerProvider.MESSAGE_TYPES.TICKER_UPDATE,
                     data: parseBitFinexTrade(data[2])
                 };
             } else if (Number.isInteger(data[0]) && Array.isArray(data[1]) && Array.isArray(data[1][0])) {
@@ -60,15 +66,15 @@ const definition = {
                 const lastTradeId = Math.max.apply(Math, data[1].map(o => o[0]));
                 const lastTrade = data[1].find(o => o[0] === lastTradeId);
                 return {
-                    type: WebsocketTicker.MESSAGE_TYPES.TRADE,
+                    type: TickerProvider.MESSAGE_TYPES.TICKER_UPDATE,
                     data: parseBitFinexTrade(lastTrade)
                 };
             } else if (data[1] === "te") {
                 // trade update: "te" (executon) -  comes before tu (confirmed trade  w tradeid).
                 // we igndore it
-                return { type: WebsocketTicker.MESSAGE_TYPES.IGNORE, data };
+                return { type: TickerProvider.MESSAGE_TYPES.IGNORE, data };
             } else {
-                return { type: WebsocketTicker.MESSAGE_TYPES.UNKNOWN, data };
+                return { type: TickerProvider.MESSAGE_TYPES.UNKNOWN, data };
             }
         }
     }

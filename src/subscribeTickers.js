@@ -2,7 +2,7 @@
  - write integration tests
   */
 
-const WebsocketTicker = require("./tickerProviders/WebsocketTicker.js");
+const TickerProvider = require("./tickerProviders/TickerProvider.js");
 
 const gdaxTickerProvider = require("./tickerProviders/gdaxTickerProvider.js");
 const krakenTickerProvider = require("./tickerProviders/krakenTickerProvider.js");
@@ -11,10 +11,10 @@ const bitstampTickerProvider = require("./tickerProviders/bitstampTickerProvider
 //const bitfinexTickerProvider = require("./tickerProviders/bitfinexTickerProvider.js");
 
 const tickers = [
-    new WebsocketTicker(krakenTickerProvider.definition),
-    new WebsocketTicker(gdaxTickerProvider.definition),
-    new WebsocketTicker(bitstampTickerProvider.definition)
-    //,    new WebsocketTicker(bitfinexTickerProvider.definition)
+    new TickerProvider(krakenTickerProvider.definition),
+    new TickerProvider(gdaxTickerProvider.definition),
+    new TickerProvider(bitstampTickerProvider.definition)
+    //,    new TickerProvider(bitfinexTickerProvider.definition)
 ];
 
 function connectAll() {
