@@ -79,6 +79,8 @@ class TickerProvider extends EventEmitter {
         this.lastHeartbeat = null;
         this.name = definition.NAME;
         this.lastTicker = null; // { price, volume, time}
+        this.connectedAt = null;
+        this.reconnectCount = null; // first connect will set to 0, any further connect increases
 
         // if standard websocket connection
         this.wssUrl = definition.WSS_URL;
@@ -139,7 +141,13 @@ class TickerProvider extends EventEmitter {
     }
 
     getStatus() {
-        return { name: this.name, lastTicker: this.lastTicker, lastHeartbeat: this.lastHeartbeat };
+        return {
+            name: this.name,
+            lastTicker: this.lastTicker,
+            lastHeartbeat: this.lastHeartbeat,
+            connectedAt: this.connectedAt,
+            reconnectCount: this.reconnectCount
+        };
     }
 
     connectAndSubscribe() {
@@ -290,6 +298,12 @@ class TickerProvider extends EventEmitter {
 
     _onProviderConnected(data) {
         log.debug(this.name, "connected.", JSON.stringify(data));
+        this.connectedAt = new Date();
+        if (this.reconnectCount) {
+            this.reconnectCount++;
+        } else {
+            this.reconnectCount = 0; // first connect
+        }
         if (this.pingInterval && !this.isDisconnecting) {
             this.pingIntervalTimer = setInterval(this.ping.bind(this), this.pingInterval);
         }
