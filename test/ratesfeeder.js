@@ -18,9 +18,9 @@ describe("RatesFeeder: real exchange rate tests", () => {
 
     it("ratesFeeder should return the median price of all tickers", () => {
         const tickers = [
-            { lastTrade: { price: 187.73 } },
-            { lastTrade: { price: 186.73 } },
-            { lastTrade: { price: 187.3 } }
+            { lastTicker: { price: 187.73 } },
+            { lastTicker: { price: 186.73 } },
+            { lastTicker: { price: 187.3 } }
         ];
         const expectedPrice = 187.3;
         const price = ratesFeeder.calculateAugmintPrice(tickers);
@@ -29,9 +29,9 @@ describe("RatesFeeder: real exchange rate tests", () => {
 
     it("ratesFeeder should return the median price of all tickers (flash crash)", () => {
         const tickers = [
-            { lastTrade: { price: 170.81 } },
-            { lastTrade: { price: 171.06 } },
-            { lastTrade: { price: 0.1 } }
+            { lastTicker: { price: 170.81 } },
+            { lastTicker: { price: 171.06 } },
+            { lastTicker: { price: 0.1 } }
         ];
         const expectedPrice = 170.81;
         const price = ratesFeeder.calculateAugmintPrice(tickers);
@@ -40,9 +40,9 @@ describe("RatesFeeder: real exchange rate tests", () => {
 
     it("ratesFeeder should return the median price of live tickers (1 ticker null)", () => {
         const tickers = [
-            { lastTrade: { price: 176.79 } },
-            { lastTrade: { price: null } },
-            { lastTrade: { price: 176.99 } }
+            { lastTicker: { price: 176.79 } },
+            { lastTicker: { price: null } },
+            { lastTicker: { price: 176.99 } }
         ];
         const expectedPrice = 176.89;
         const price = ratesFeeder.calculateAugmintPrice(tickers);
@@ -50,14 +50,18 @@ describe("RatesFeeder: real exchange rate tests", () => {
     });
 
     it("ratesFeeder should return the median price of live tickers (2 ticker null/0)", () => {
-        const tickers = [{ lastTrade: { price: 641.12 } }, { lastTrade: { price: null } }, { lastTrade: { price: 0 } }];
+        const tickers = [
+            { lastTicker: { price: 641.12 } },
+            { lastTicker: { price: null } },
+            { lastTicker: { price: 0 } }
+        ];
         const expectedPrice = 641.12;
         const price = ratesFeeder.calculateAugmintPrice(tickers);
         assert.equal(price, expectedPrice);
     });
 
     it("ratesFeeder should return null median price when all tickers null or zero )", () => {
-        const tickers = [{ lastTrade: { price: 0 } }, { lastTrade: { price: null } }, { lastTrade: { price: 0 } }];
+        const tickers = [{ lastTicker: { price: 0 } }, { lastTicker: { price: null } }, { lastTicker: { price: 0 } }];
         const expectedPrice = null;
         const price = ratesFeeder.calculateAugmintPrice(tickers);
         assert.equal(price, expectedPrice);
@@ -68,9 +72,9 @@ describe("RatesFeeder: real exchange rate tests", () => {
         const expectedCheckedAt = new Date();
 
         ratesFeeder.tickers = [
-            { name: "testTicker1", lastTrade: { price: 657.62, time: expectedCheckedAt } },
-            { name: "testTicker2", lastTrade: { price: 659.52, time: expectedCheckedAt } },
-            { name: "testTicker3", lastTrade: { price: 659.2, time: expectedCheckedAt } }
+            { name: "testTicker1", lastTicker: { price: 657.62, time: expectedCheckedAt } },
+            { name: "testTicker2", lastTicker: { price: 659.52, time: expectedCheckedAt } },
+            { name: "testTicker3", lastTicker: { price: 659.2, time: expectedCheckedAt } }
         ];
 
         const expectedPrice = 659.2;

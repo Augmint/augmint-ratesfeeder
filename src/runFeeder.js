@@ -20,27 +20,27 @@ ratesFeeder
     .then(() => {
         subscribeTickers.connectAll();
 
-        subscribeTickers.tickers.forEach(ticker => {
-            // ticker.on("pricechange", onTickerPriceChange);
-            // ticker.on("trade", onTickerTrade);
-            // ticker.on("disconnecting", onTickerDisconnecting);
-            ticker.on("heartbeattimeout", onTickerHeartbeatTimeout);
+        subscribeTickers.tickers.forEach(tickerProvider => {
+            // tickerProvider.on("pricechange", onTickerPriceChange);
+            // tickerProvider.on("trade", onTickerTrade);
+            // tickerProvider.on("disconnecting", onTickerDisconnecting);
+            tickerProvider.on("heartbeattimeout", onTickerHeartbeatTimeout);
         });
 
-        // function onTickerDisconnecting(ticker) {
-        //     log.debug(ticker.name, "disconnecting.", "WebSocket readyState: ", this.ws.readyState);
+        // function onTickerDisconnecting(tickerProvider) {
+        //     log.debug(tickerProvider.name, "disconnecting.", "WebSocket readyState: ", tickerProvider.ws.readyState);
         // }
 
         function onTickerHeartbeatTimeout(ticker) {
             log.warn(ticker.name, "heartbeat timed out. Reconnecting.");
         }
 
-        // function onTickerPriceChange(lastTrade, prevTrade, ticker) {
-        //     log.log("onTickerPriceChange", ticker.name, "\t", JSON.stringify(lastTrade), JSON.stringify(prevTrade));
+        // function onTickerPriceChange(newTicker, prevTicker, ticker) {
+        //     log.log("onTickerPriceChange", ticker.name, "\t", JSON.stringify(newTicker), JSON.stringify(prevTicker));
         // }
         //
-        // function onTickerTrade(lastTrade, prevTrade, ticker) {
-        //     log.debug("onTickerTrade", ticker.name, "\t", JSON.stringify(lastTrade), JSON.stringify(prevTrade));
+        // function onTickerTrade(newTicker, prevTicker, tickerProvider) {
+        //     log.debug("onTickerTrade", tickerProvider.name, "\t", JSON.stringify(newTicker), JSON.stringify(prevTicker));
         // }
     })
     .catch(error => {

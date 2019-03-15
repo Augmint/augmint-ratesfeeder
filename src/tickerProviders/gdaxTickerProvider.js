@@ -30,7 +30,7 @@ const definition = {
             const time = data.time ? new Date(data.time) : new Date();
 
             return {
-                type: WebsocketTicker.MESSAGE_TYPES.TRADE,
+                type: WebsocketTicker.MESSAGE_TYPES.TICKER_UPDATE,
                 data: {
                     price: parseFloat(data.price),
                     volume,

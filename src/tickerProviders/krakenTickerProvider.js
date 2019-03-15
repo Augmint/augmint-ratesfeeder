@@ -50,7 +50,7 @@ const definition = {
                 // It's a ticker because no event prop present
                 // https://www.kraken.com/features/websocket-api#message-ticker
                 return {
-                    type: WebsocketTicker.MESSAGE_TYPES.TRADE,
+                    type: WebsocketTicker.MESSAGE_TYPES.TICKER_UPDATE,
                     data: { price: parseFloat(data[1].c[0]), volume: parseFloat(data[1].c[1]), time: new Date() } // Kraken doesn't return trade time nor seq
                 };
             }

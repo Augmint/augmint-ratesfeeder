@@ -34,16 +34,22 @@ const definition = {
                 tradeId: tradeData[0]
             };
         }
+
         const data = JSON.parse(msg.data);
+
         switch (data.event) {
         case "info":
             return { type: WebsocketTicker.MESSAGE_TYPES.CONNECTED, data };
+
         case "subscribed":
             return { type: WebsocketTicker.MESSAGE_TYPES.SUBSCRIBED, data };
+
         case "unsubscribed":
             return { type: WebsocketTicker.MESSAGE_TYPES.UNSUBSCRIBED, data };
+
         case "pong":
             return { type: WebsocketTicker.MESSAGE_TYPES.PONG, data };
+
         default:
             if (data[1] === "hb") {
                 return { type: WebsocketTicker.MESSAGE_TYPES.HEARTBEAT, data };
@@ -51,7 +57,7 @@ const definition = {
                 // confirmed trade with tradeid
                 // https://docs.bitfinex.com/v2/reference#ws-public-trades
                 return {
-                    type: WebsocketTicker.MESSAGE_TYPES.TRADE,
+                    type: WebsocketTicker.MESSAGE_TYPES.TICKER_UPDATE,
                     data: parseBitFinexTrade(data[2])
                 };
             } else if (Number.isInteger(data[0]) && Array.isArray(data[1]) && Array.isArray(data[1][0])) {
@@ -60,7 +66,7 @@ const definition = {
                 const lastTradeId = Math.max.apply(Math, data[1].map(o => o[0]));
                 const lastTrade = data[1].find(o => o[0] === lastTradeId);
                 return {
-                    type: WebsocketTicker.MESSAGE_TYPES.TRADE,
+                    type: WebsocketTicker.MESSAGE_TYPES.TICKER_UPDATE,
                     data: parseBitFinexTrade(lastTrade)
                 };
             } else if (data[1] === "te") {

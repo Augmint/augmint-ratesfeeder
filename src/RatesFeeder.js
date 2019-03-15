@@ -144,8 +144,8 @@ class RatesFeeder {
             log.debug(
                 "    ",
                 t.name,
-                t.lastTrade ? t.lastTrade.price : "null",
-                t.lastTrade ? t.lastTrade.time : "null"
+                t.lastTicker ? t.lastTicker.price : "null",
+                t.lastTicker ? t.lastTicker.time : "null"
             );
         });
 
@@ -162,7 +162,7 @@ class RatesFeeder {
                 } livePrice: ${livePrice} livePriceDifference: ${(livePriceDifference * 100).toFixed(2)} %`
             );
 
-            const tickersInfo = this.tickers.map(t => ({ name: t.name, lastTrade: t.lastTrade }));
+            const tickersInfo = this.tickers.map(t => ({ name: t.name, lastTicker: t.lastTicker }));
             this.lastTickerCheckResult.checkedAt = new Date();
             this.lastTickerCheckResult[CCY] = {
                 currentAugmintRate,
@@ -208,8 +208,8 @@ class RatesFeeder {
     calculateAugmintPrice(tickers) {
         // ignore 0 or null prices (exchange down or no price info yet)
         const prices = tickers
-            .filter(ticker => ticker.lastTrade && ticker.lastTrade.price > 0)
-            .map(t => t.lastTrade.price);
+            .filter(ticker => ticker.lastTicker && ticker.lastTicker.price > 0)
+            .map(t => t.lastTicker.price);
         let augmintPrice = median(prices);
         augmintPrice = Math.round(augmintPrice * this.decimalsDiv) / this.decimalsDiv;
 

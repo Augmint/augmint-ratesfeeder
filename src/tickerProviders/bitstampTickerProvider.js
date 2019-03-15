@@ -21,7 +21,7 @@ const definition = {
 
     processMessage: msg => {
         return {
-            type: WebsocketTicker.MESSAGE_TYPES.TRADE,
+            type: WebsocketTicker.MESSAGE_TYPES.TICKER_UPDATE,
             data: {
                 price: parseFloat(msg.price),
                 volume: msg.amount,
