@@ -152,25 +152,28 @@ class RatesFeeder {
         const currentAugmintRate = await this.getAugmintRate(CCY);
 
         const livePrice = this.calculateAugmintPrice(this.tickers);
+        const livePriceDifference =
+            livePrice > 0
+                ? Math.round((Math.abs(livePrice - currentAugmintRate.price) / currentAugmintRate.price) * 10000) /
+                  10000
+                : null;
+
+        log.debug(
+            `    checkTickerPrice() currentAugmintRate[${CCY}]: ${
+                currentAugmintRate.price
+            } livePrice: ${livePrice} livePriceDifference: ${(livePriceDifference * 100).toFixed(2)} %`
+        );
+
+        const tickersInfo = this.tickers.map(t => t.getStatus());
+        this.lastTickerCheckResult.checkedAt = new Date();
+        this.lastTickerCheckResult[CCY] = {
+            currentAugmintRate,
+            livePrice,
+            livePriceDifference,
+            tickersInfo
+        };
+
         if (livePrice > 0) {
-            const livePriceDifference =
-                Math.round((Math.abs(livePrice - currentAugmintRate.price) / currentAugmintRate.price) * 10000) / 10000;
-
-            log.debug(
-                `    checkTickerPrice() currentAugmintRate[${CCY}]: ${
-                    currentAugmintRate.price
-                } livePrice: ${livePrice} livePriceDifference: ${(livePriceDifference * 100).toFixed(2)} %`
-            );
-
-            const tickersInfo = this.tickers.map(t => t.getStatus());
-            this.lastTickerCheckResult.checkedAt = new Date();
-            this.lastTickerCheckResult[CCY] = {
-                currentAugmintRate,
-                livePrice,
-                livePriceDifference,
-                tickersInfo
-            };
-
             if (livePriceDifference * 100 > parseFloat(process.env.LIVE_PRICE_THRESHOLD_PT)) {
                 await this.promiseTimeout(process.env.SETRATE_TX_TIMEOUT, this.updatePrice(CCY, livePrice)).catch(
                     error => {
