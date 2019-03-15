@@ -7,6 +7,8 @@ const baseHelpers = require("./helpers/base.js");
 const CCY = "EUR";
 let BYTES_CCY;
 
+const getStatus = () => "tickerProvider mock getStatus for test";
+
 let ratesFeeder;
 
 describe("RatesFeeder: real exchange rate tests", () => {
@@ -20,7 +22,8 @@ describe("RatesFeeder: real exchange rate tests", () => {
         const tickers = [
             { lastTicker: { price: 187.73 } },
             { lastTicker: { price: 186.73 } },
-            { lastTicker: { price: 187.3 } }
+            { lastTicker: { price: 187.3 } },
+            getStatus
         ];
         const expectedPrice = 187.3;
         const price = ratesFeeder.calculateAugmintPrice(tickers);
@@ -31,7 +34,8 @@ describe("RatesFeeder: real exchange rate tests", () => {
         const tickers = [
             { lastTicker: { price: 170.81 } },
             { lastTicker: { price: 171.06 } },
-            { lastTicker: { price: 0.1 } }
+            { lastTicker: { price: 0.1 } },
+            getStatus
         ];
         const expectedPrice = 170.81;
         const price = ratesFeeder.calculateAugmintPrice(tickers);
@@ -42,7 +46,8 @@ describe("RatesFeeder: real exchange rate tests", () => {
         const tickers = [
             { lastTicker: { price: 176.79 } },
             { lastTicker: { price: null } },
-            { lastTicker: { price: 176.99 } }
+            { lastTicker: { price: 176.99 } },
+            getStatus
         ];
         const expectedPrice = 176.89;
         const price = ratesFeeder.calculateAugmintPrice(tickers);
@@ -53,7 +58,8 @@ describe("RatesFeeder: real exchange rate tests", () => {
         const tickers = [
             { lastTicker: { price: 641.12 } },
             { lastTicker: { price: null } },
-            { lastTicker: { price: 0 } }
+            { lastTicker: { price: 0 } },
+            getStatus
         ];
         const expectedPrice = 641.12;
         const price = ratesFeeder.calculateAugmintPrice(tickers);
@@ -72,9 +78,9 @@ describe("RatesFeeder: real exchange rate tests", () => {
         const expectedCheckedAt = new Date();
 
         ratesFeeder.tickers = [
-            { name: "testTicker1", lastTicker: { price: 657.62, time: expectedCheckedAt } },
-            { name: "testTicker2", lastTicker: { price: 659.52, time: expectedCheckedAt } },
-            { name: "testTicker3", lastTicker: { price: 659.2, time: expectedCheckedAt } }
+            { name: "testTicker1", lastTicker: { price: 657.62, time: expectedCheckedAt }, getStatus },
+            { name: "testTicker2", lastTicker: { price: 659.52, time: expectedCheckedAt }, getStatus },
+            { name: "testTicker3", lastTicker: { price: 659.2, time: expectedCheckedAt }, getStatus }
         ];
 
         const expectedPrice = 659.2;
