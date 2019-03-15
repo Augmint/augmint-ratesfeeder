@@ -102,12 +102,18 @@ describe("RatesFeeder: real exchange rate tests", () => {
 
         const newStoredRate = await ratesFeeder.augmintRatesInstance.methods.rates(BYTES_CCY).call();
 
-        // lastTickerCheckResult format:
-        // lastTickerCheckResult{ CCY:  { currentAugmintRate: {price, lastUpdated},  livePrice, livePriceDifference, [tickersInfo] } };
-        // TODO: we should revise when we update this in checkTickerPrice() and then align the test
-        //assert.equal(ratesFeeder.lastTickerCheckResult[CCY].currentAugmintRate.price, expectedPrice);
-        // ratesFeeder.lastTickerCheckResult[CCY].currentAugmintRate.lastUpdated
         assert.equal(ratesFeeder.lastTickerCheckResult[CCY].livePrice, expectedPrice);
+        // lastTickerCheckResult format: { CCY:  { currentAugmintRate: {price, lastUpdated},  livePrice, livePriceDifference, [tickersInfo] } };
+        // currentAugmintRate shouldn't be updated yet (checkTickerPrice sends setRate async, currentAugmintRate updated
+        //                                              only after tx confirmation when checkTickerPrice called again)
+        assert.equal(
+            ratesFeeder.lastTickerCheckResult[CCY].currentAugmintRate.price,
+            prevStoredRate.rate / ratesFeeder.decimalsDiv
+        );
+        assert.equal(
+            ratesFeeder.lastTickerCheckResult[CCY].currentAugmintRate.lastUpdated / 1000,
+            prevStoredRate.lastUpdated
+        );
 
         assert.isAtLeast(ratesFeeder.lastTickerCheckResult.checkedAt - expectedCheckedAt, 0);
         assert.isAtMost(ratesFeeder.lastTickerCheckResult.checkedAt - expectedCheckedAt, 1000);
@@ -119,7 +125,7 @@ describe("RatesFeeder: real exchange rate tests", () => {
 
     it("ratesFeeder should NOT set the price on-chain from tickers when diff < threshold ");
 
-    it("ratesFeeder should NOT set the price on-chain from tickers when all tickers are down");
+    it("ratesFeeder should NOT set the price on-chain from tickers when all tickers are down", async () => {});
 
     it("set on-chain rate and should be the same", async () => {
         const price = 213.14;
