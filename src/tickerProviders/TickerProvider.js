@@ -22,7 +22,10 @@ constructor receives definition object :
     // see  example definition in *tickerProvider.js files implemented for a few exchanges
 }
 
-Subscribe to the following events emmited:
+Subscribe to the following events emitted:
+    // on connected:
+    <ticker instance>.on("connected", (info, tickerProvider) => { ... } );
+
     // on Every trade:
     <ticker instance>.on("trade", (newTicker, prevTicker, tickerProvider) => { ... } );
 
@@ -308,6 +311,7 @@ class TickerProvider extends EventEmitter {
         if (this.pingInterval && !this.isDisconnecting) {
             this.pingIntervalTimer = setInterval(this.ping.bind(this), this.pingInterval);
         }
+        this.emit("connected", data, this);
     }
 
     _onProviderDisconnected() {
