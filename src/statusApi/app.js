@@ -1,6 +1,5 @@
-require("../env.js");
-// const ulog = require("ulog");
-// const log = ulog("statusApi");
+require("src/env.js");
+// const log = require("src/log.js")("statusApi");
 
 const httplogger = require("morgan");
 const createError = require("http-errors");

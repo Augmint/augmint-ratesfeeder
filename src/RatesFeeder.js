@@ -15,13 +15,12 @@ TODO:
         web3.eth.transactionPollingTimeout: ${web3.eth.transactionPollingTimeout}
 */
 
-require("./env.js");
-const ulog = require("ulog");
-const log = ulog("ratesFeeder");
+require("src/env.js");
+const log = require("src/log.js")("ratesFeeder");
 const Web3 = require("web3");
-const contractsHelper = require("./contractsHelper.js");
-const TokenAEur = require("./abiniser/abis/TokenAEur_ABI_2ea91d34a7bfefc8f38ef0e8a5ae24a5.json");
-const Rates = require("./abiniser/abis/Rates_ABI_73a17ebb0acc71773371c6a8e1c8e6ce.json");
+const contractsHelper = require("src/contractsHelper.js");
+const TokenAEur = require("src/abiniser/abis/TokenAEur_ABI_2ea91d34a7bfefc8f38ef0e8a5ae24a5.json");
+const Rates = require("src/abiniser/abis/Rates_ABI_73a17ebb0acc71773371c6a8e1c8e6ce.json");
 
 const CCY = "EUR"; // only EUR is suported by TickerProvider providers ATM
 const SET_RATE_GAS_LIMIT = 80000;
@@ -320,7 +319,7 @@ class RatesFeeder {
     }
 
     exit(signal) {
-        log.info(`\n*** ratesFeeder Received ${signal}. Stopping.`);
+        log.info(`*** ratesFeeder Received ${signal}. Stopping.`);
         this.stop();
     }
 

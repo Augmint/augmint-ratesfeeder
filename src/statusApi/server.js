@@ -1,6 +1,5 @@
 require("../env.js");
-const ulog = require("ulog");
-const log = ulog("statusApi");
+const log = require("src/log.js")("statusApi");
 const app = require("./app.js");
 const http = require("http");
 let httpServer;
