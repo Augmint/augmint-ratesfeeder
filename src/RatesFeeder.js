@@ -19,6 +19,7 @@ require("src/env.js");
 const log = require("src/log.js")("ratesFeeder");
 const Web3 = require("web3");
 const contractsHelper = require("src/helpers/contractsHelper.js");
+const promiseTimeout = require("src/helpers/promiseTimeout.js");
 const TokenAEur = require("src/abiniser/abis/TokenAEur_ABI_2ea91d34a7bfefc8f38ef0e8a5ae24a5.json");
 const Rates = require("src/abiniser/abis/Rates_ABI_73a17ebb0acc71773371c6a8e1c8e6ce.json");
 
@@ -174,13 +175,11 @@ class RatesFeeder {
 
         if (livePrice > 0) {
             if (livePriceDifference * 100 > parseFloat(process.env.LIVE_PRICE_THRESHOLD_PT)) {
-                await this.promiseTimeout(process.env.SETRATE_TX_TIMEOUT, this.updatePrice(CCY, livePrice)).catch(
-                    error => {
-                        // NB: it's not necessarily an error, ethereum network might be just slow.
-                        // we still schedule our next check which will send an update at next tick of checkTickerPrice()
-                        log.error("updatePrice failed with Error: ", error);
-                    }
-                );
+                await promiseTimeout(process.env.SETRATE_TX_TIMEOUT, this.updatePrice(CCY, livePrice)).catch(error => {
+                    // NB: it's not necessarily an error, ethereum network might be just slow.
+                    // we still schedule our next check which will send an update at next tick of checkTickerPrice()
+                    log.error("updatePrice failed with Error: ", error);
+                });
             }
         } else {
             log.warn("RatesFeeder couldn't get price from any sources. Not updating price info");
@@ -191,20 +190,6 @@ class RatesFeeder {
             process.env.CHECK_TICKER_PRICE_INTERVAL > 0
                 ? setTimeout(this.checkTickerPrice.bind(this), process.env.CHECK_TICKER_PRICE_INTERVAL)
                 : null;
-    }
-
-    promiseTimeout(ms, promise) {
-        let id;
-        let timeout = new Promise((resolve, reject) => {
-            id = setTimeout(() => {
-                reject("Timed out in " + ms + "ms.");
-            }, ms);
-        });
-
-        return Promise.race([promise, timeout]).then(result => {
-            clearTimeout(id);
-            return result;
-        });
     }
 
     calculateAugmintPrice(tickers) {
