@@ -18,7 +18,7 @@ TODO:
 require("src/env.js");
 const log = require("src/log.js")("ratesFeeder");
 const Web3 = require("web3");
-const contractsHelper = require("src/contractsHelper.js");
+const contractsHelper = require("src/helpers/contractsHelper.js");
 const TokenAEur = require("src/abiniser/abis/TokenAEur_ABI_2ea91d34a7bfefc8f38ef0e8a5ae24a5.json");
 const Rates = require("src/abiniser/abis/Rates_ABI_73a17ebb0acc71773371c6a8e1c8e6ce.json");
 
