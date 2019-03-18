@@ -408,7 +408,7 @@ class TickerProvider extends EventEmitter {
     }
 
     _exit(signal) {
-        log.info(`\n*** ${this.name} received ${signal}. Disconnecting.`);
+        log.info(`*** ${this.name} received ${signal}. Disconnecting.`);
         this.disconnect();
     }
 

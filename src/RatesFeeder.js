@@ -320,7 +320,7 @@ class RatesFeeder {
     }
 
     exit(signal) {
-        log.info(`\n*** ratesFeeder Received ${signal}. Stopping.`);
+        log.info(`*** ratesFeeder Received ${signal}. Stopping.`);
         this.stop();
     }
 
