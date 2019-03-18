@@ -45,9 +45,7 @@ TODO:
 - BitStamp released V2 websocket API which is without pusher - we could get rid of pusher specific code
 
 */
-
-const ulog = require("ulog");
-const log = ulog("TickerProvider");
+const log = require("src/log.js")("TickerProvider");
 const WebSocket = require("ws");
 const Pusher = require("pusher-js");
 const EventEmitter = require("events");

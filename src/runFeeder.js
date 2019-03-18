@@ -1,9 +1,8 @@
-require("./env.js");
-const ulog = require("ulog");
-const log = ulog("runFeeder");
-const RatesFeeder = require("../src/RatesFeeder.js");
-const subscribeTickers = require("../src/subscribeTickers.js");
-const statusApi = require("../src/statusApi/server.js");
+require("src/env.js");
+const log = require("src/log.js")("runFeeder");
+const RatesFeeder = require("src/RatesFeeder.js");
+const subscribeTickers = require("src/subscribeTickers.js");
+const statusApi = require("src/statusApi/server.js");
 
 log.info(
     `** runFeeder starting with settings:
