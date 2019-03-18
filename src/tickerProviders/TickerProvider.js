@@ -79,6 +79,7 @@ class TickerProvider extends EventEmitter {
         this.lastHeartbeat = null;
         this.name = definition.NAME;
         this.lastTicker = null; // { price, volume, time}
+        this.isConnected = false;
         this.connectedAt = null;
         this.reconnectCount = null; // first connect will set to 0, any further connect increases
 
@@ -145,6 +146,7 @@ class TickerProvider extends EventEmitter {
             name: this.name,
             lastTicker: this.lastTicker,
             lastHeartbeat: this.lastHeartbeat,
+            isConnected: this.isConnected,
             connectedAt: this.connectedAt,
             reconnectCount: this.reconnectCount
         };
@@ -299,6 +301,7 @@ class TickerProvider extends EventEmitter {
     _onProviderConnected(data) {
         log.debug(this.name, "connected.", JSON.stringify(data));
         this.connectedAt = new Date();
+        this.isConnected = true;
         if (this.reconnectCount) {
             this.reconnectCount++;
         } else {
@@ -310,6 +313,7 @@ class TickerProvider extends EventEmitter {
     }
 
     _onProviderDisconnected() {
+        this.isConnected = false;
         if (this.isDisconnecting) {
             log.debug(this.name, "provider disconnected (expected)");
             this.isDisconnecting = false;
@@ -321,6 +325,10 @@ class TickerProvider extends EventEmitter {
     }
 
     _onProviderSubscriptionSucceeded(data) {
+        if (!this.isConnected) {
+            // GDAX doesn't send any message after connection
+            this._onProviderConnected({ info: "on subscription" });
+        }
         log.info("\u2713", this.name, "subscribed.", JSON.stringify(data));
         if (data.chanId) {
             // Bitfinex returns chanId which is required for unsubscribe
