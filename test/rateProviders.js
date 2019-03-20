@@ -36,14 +36,8 @@ tickerDefs.forEach(tickerDef => {
             ticker.on("connected", connectedSpy);
             ticker.on("initialtickerinforeceived", initTickerSpy);
 
-            const initTickerEventPromise = new Promise(resolve =>
-                ticker.on("initialtickerinforeceived", () => resolve())
-            );
-
             const connectionTime = new Date();
             await ticker.connectAndSubscribe();
-
-            await initTickerEventPromise;
 
             let status = ticker.getStatus();
             assert(connectedSpy.calledOnce);

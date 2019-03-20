@@ -164,9 +164,12 @@ class TickerProvider extends EventEmitter {
 
     async connectAndSubscribe() {
         try {
-            if (!this.isDisconnecting) {
-                // set initial price for providers which doesn't return initial snapshot after subscription
-                this._fetchInitialTickerInfo();
+            if (this.isDisconnecting) {
+                return; // ignore if it was called by heartbeatTimeout
+            } else {
+                const connectedEventPromise = new Promise(resolve => {
+                    this.once("connected", () => resolve());
+                });
 
                 switch (this.providerType) {
                 case PROVIDER_TYPES.WSS:
@@ -236,14 +239,15 @@ class TickerProvider extends EventEmitter {
                         `Error: Can't connect to ${this.name}. Invalid provider type: ${this.providerType}`
                     );
                 }
+
+                // set initial price for providers which doesn't return initial snapshot after subscription
+                await this._fetchInitialTickerInfo();
+
+                return connectedEventPromise;
             }
         } catch (error) {
             throw new Error("Error: Can't connect to " + this.name + ". Details:\n" + error);
         }
-
-        return new Promise(resolve => {
-            this.once("connected", () => resolve());
-        });
     }
 
     async unsubscribe() {
