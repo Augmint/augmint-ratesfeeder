@@ -51,6 +51,7 @@ TODO:
 - BitStamp released V2 websocket API which is without pusher - we could get rid of pusher specific code
 
 */
+require("src/env.js"); // for tests to have proper env vars too
 const log = require("src/log.js")("TickerProvider");
 const sigintHandler = require("src/helpers/sigintHandler.js");
 const WebSocket = require("ws");
