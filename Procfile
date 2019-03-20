@@ -1,1 +1,1 @@
-web: yarn start:production
+web: NODE_PATH=. node ./src/runFeeder.js
