@@ -17,8 +17,10 @@ TODO:
 
 require("src/env.js");
 const log = require("src/log.js")("ratesFeeder");
+const sigintHandler = require("src/helpers/sigintHandler.js");
 const Web3 = require("web3");
-const contractsHelper = require("src/contractsHelper.js");
+const contractsHelper = require("src/helpers/contractsHelper.js");
+const promiseTimeout = require("src/helpers/promiseTimeout.js");
 const TokenAEur = require("src/abiniser/abis/TokenAEur_ABI_2ea91d34a7bfefc8f38ef0e8a5ae24a5.json");
 const Rates = require("src/abiniser/abis/Rates_ABI_73a17ebb0acc71773371c6a8e1c8e6ce.json");
 
@@ -59,7 +61,7 @@ class RatesFeeder {
     }
 
     async init() {
-        ["SIGINT", "SIGHUP", "SIGTERM"].forEach(signal => process.on(signal, signal => this.exit(signal)));
+        sigintHandler(this.exit.bind(this), "RatesFeeder");
 
         this.account = process.env.ETHEREUM_ACCOUNT;
 
@@ -174,13 +176,11 @@ class RatesFeeder {
 
         if (livePrice > 0) {
             if (livePriceDifference * 100 > parseFloat(process.env.LIVE_PRICE_THRESHOLD_PT)) {
-                await this.promiseTimeout(process.env.SETRATE_TX_TIMEOUT, this.updatePrice(CCY, livePrice)).catch(
-                    error => {
-                        // NB: it's not necessarily an error, ethereum network might be just slow.
-                        // we still schedule our next check which will send an update at next tick of checkTickerPrice()
-                        log.error("updatePrice failed with Error: ", error);
-                    }
-                );
+                await promiseTimeout(process.env.SETRATE_TX_TIMEOUT, this.updatePrice(CCY, livePrice)).catch(error => {
+                    // NB: it's not necessarily an error, ethereum network might be just slow.
+                    // we still schedule our next check which will send an update at next tick of checkTickerPrice()
+                    log.error("updatePrice failed with Error: ", error);
+                });
             }
         } else {
             log.warn("RatesFeeder couldn't get price from any sources. Not updating price info");
@@ -191,20 +191,6 @@ class RatesFeeder {
             process.env.CHECK_TICKER_PRICE_INTERVAL > 0
                 ? setTimeout(this.checkTickerPrice.bind(this), process.env.CHECK_TICKER_PRICE_INTERVAL)
                 : null;
-    }
-
-    promiseTimeout(ms, promise) {
-        let id;
-        let timeout = new Promise((resolve, reject) => {
-            id = setTimeout(() => {
-                reject("Timed out in " + ms + "ms.");
-            }, ms);
-        });
-
-        return Promise.race([promise, timeout]).then(result => {
-            clearTimeout(id);
-            return result;
-        });
     }
 
     calculateAugmintPrice(tickers) {
@@ -306,7 +292,7 @@ class RatesFeeder {
         }
     }
 
-    stop() {
+    async stop() {
         clearTimeout(this.checkTickerPriceTimer);
         if (
             this.web3 &&
@@ -314,13 +300,13 @@ class RatesFeeder {
             typeof this.web3.currentProvider.connection.close === "function"
         ) {
             // connection.close only exists when websocket connection. it is required to close in order node process to stop
-            this.web3.currentProvider.connection.close();
+            await this.web3.currentProvider.connection.close();
         }
     }
 
-    exit(signal) {
+    async exit(signal) {
         log.info(`*** ratesFeeder Received ${signal}. Stopping.`);
-        this.stop();
+        await this.stop();
     }
 
     getStatus() {

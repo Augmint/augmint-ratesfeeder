@@ -24,7 +24,8 @@
   },
   "devDependencies": {
     "chai": "4.2.0",
-    "mocha": "6.0.2"
+    "mocha": "6.0.2",
+    "sinon": "7.2.7"
   },
   "optionalDependencies": {
     "bufferutil": "4.0.1",

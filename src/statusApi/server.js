@@ -1,14 +1,22 @@
 require("../env.js");
 const log = require("src/log.js")("statusApi");
+const promiseTimeout = require("src/helpers/promiseTimeout.js");
+const sigintHandler = require("src/helpers/sigintHandler.js");
 const app = require("./app.js");
 const http = require("http");
 let httpServer;
 
+const CLOSE_TIMEOUT = 5000; // how much wait on close for sockets to close
+// maintain socket info to destroy all sockets on SIGINT after CLOSE_TIMEOUT time
+//  so that we don't to wait server.timeOut (defult 2 mins..) when shuting down
+const serverSockets = new Set();
 const DEFAULT_PORT = 30000;
 
 function start(ratesFeeder) {
-    ["SIGINT", "SIGHUP", "SIGTERM"].forEach(signal => process.on(signal, signal => exit(signal)));
+    sigintHandler(exit, "statusApi");
+
     const port = normalizePort(process.env.PORT || DEFAULT_PORT);
+
     app.set("port", port);
     app.locals.ratesFeeder = ratesFeeder;
 
@@ -17,6 +25,13 @@ function start(ratesFeeder) {
     httpServer.listen(port);
     httpServer.on("error", onError);
     httpServer.on("listening", onListening);
+
+    httpServer.on("connection", socket => {
+        serverSockets.add(socket);
+        socket.on("close", () => {
+            serverSockets.delete(socket);
+        });
+    });
 
     function normalizePort(val) {
         var port = parseInt(val, 10);
@@ -62,18 +77,36 @@ function start(ratesFeeder) {
         log.info(` \u2713 statusApi is listening on ${bind}`);
     }
 
-    function exit(signal) {
+    async function exit(signal) {
         log.info(`*** statusApi Received ${signal}. Stopping.`);
         if (httpServer.listening) {
-            httpServer.close(err => {
-                if (err) {
-                    log.error("ERROR. statusApi can't close httpServer. exiting. Error:", err);
-                    process.exit(1);
-                } else {
-                    log.debug("statusApi closed httpServer connections.");
-                }
+            return promiseTimeout(CLOSE_TIMEOUT, gracefulClose()).catch(error => {
+                log.info("statusApi httpserver.close timed out or error, force closing all sockets.", error);
+                destroySockets(serverSockets);
+                return;
             });
         }
+    }
+}
+
+async function gracefulClose() {
+    return new Promise((resolve, reject) => {
+        httpServer.close(err => {
+            if (err) {
+                const error = new Error("ERROR. statusApi can't close httpServer. Error:\n", err);
+                log.error(error);
+                reject(error);
+            } else {
+                log.debug("statusApi closed httpServer.");
+                resolve();
+            }
+        });
+    });
+}
+
+function destroySockets(sockets) {
+    for (const socket of sockets.values()) {
+        socket.destroy();
     }
 }
 

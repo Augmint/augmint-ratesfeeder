@@ -17,8 +17,8 @@ const tickers = [
     //,    new TickerProvider(bitfinexTickerProvider.definition)
 ];
 
-function connectAll() {
-    tickers.forEach(ticker => ticker.connectAndSubscribe());
+async function connectAll() {
+    await Promise.all(tickers.map(ticker => ticker.connectAndSubscribe()));
 }
 
 module.exports = {
