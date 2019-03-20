@@ -30,20 +30,20 @@ describe("GDAX ticker provider tests", () => {
         const connectedSpy = sinon.spy();
         ticker.on("connected", connectedSpy);
 
+        const connectionTime = new Date();
         await ticker.connectAndSubscribe();
         assert(connectedSpy.calledOnce);
 
-        const connectionTime = new Date();
         let status = ticker.getStatus();
 
         assert.equal(status.name, "GDAX");
         assert(status.isConnected);
-        assert(Math.abs(status.connectedAt - connectionTime < 3));
-        assert(Math.abs(status.lastHeartbeat - connectionTime) < 3);
+        assert.isAtMost(status.connectedAt - connectionTime, 5000);
+        assert.isAtMost(status.lastHeartbeat - connectionTime, 5000);
         assert.equal(status.reconnectCount, 0);
 
         assert.isNumber(status.lastTicker.price);
-        assert(Math.abs(status.lastTicker.time - connectionTime) < 5);
+        assert.isAtMost(status.connectedAt - status.lastTicker.time, 1000);
 
         const disconnectedSpy = sinon.spy();
         const disconnectingSpy = sinon.spy();
