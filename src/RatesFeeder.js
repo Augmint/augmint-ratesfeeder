@@ -71,7 +71,11 @@ class RatesFeeder {
             NODE_ENV: ${process.env.NODE_ENV}
             PROVIDER_TYPE: ${process.env.PROVIDER_TYPE}
             PROVIDER_URL: ${process.env.PROVIDER_URL}
-            INFURA_API_KEY: ${process.env.INFURA_API_KEY ? "[secret]" : "not provided"}
+            INFURA_PROJECT_ID: ${
+    process.env.INFURA_PROJECT_ID
+        ? process.env.INFURA_PROJECT_ID.substring(0, 4) + "... rest hidden"
+        : "not provided"
+}
             ETHEREUM_ACCOUNT: ${process.env.ETHEREUM_ACCOUNT}
             ETHEREUM_PRIVATE_KEY: ${process.env.ETHEREUM_PRIVATE_KEY ? "[secret]" : "not provided"}
             LIVE_PRICE_THRESHOLD_PT: ${process.env.LIVE_PRICE_THRESHOLD_PT}
@@ -82,22 +86,15 @@ class RatesFeeder {
             Ticker providers: ${this.tickerNames}`
         );
 
+        const projectId = process.env.INFURA_PROJECT_ID || "";
+
         switch (process.env.PROVIDER_TYPE) {
         case "http": {
-            let apiKey = "";
-
-            if (!process.env.INFURA_API_KEY) {
-                apiKey = "";
-            } else {
-                apiKey = process.env.INFURA_API_KEY;
-            }
-
-            this.web3 = await new Web3(new Web3.providers.HttpProvider(process.env.PROVIDER_URL + apiKey));
+            this.web3 = await new Web3(new Web3.providers.HttpProvider(process.env.PROVIDER_URL + projectId));
             break;
         }
         case "websocket": {
-            // NB: infura doesn't require API KEY for WS yet
-            this.web3 = await new Web3(new Web3.providers.WebsocketProvider(process.env.PROVIDER_URL));
+            this.web3 = await new Web3(new Web3.providers.WebsocketProvider(process.env.PROVIDER_URL + projectId));
             break;
         }
         default:
