@@ -66,6 +66,35 @@ tickerDefs.forEach(tickerDef => {
             assert(!status.isConnected);
         });
 
+        it("should reconnect when reconnect called", async () => {
+            const ticker = new TickerProvider(tickerDef.definition);
+
+            await ticker.connectAndSubscribe();
+
+            const connectionTime = new Date();
+
+            const connectedSpy = sinon.spy();
+            const initTickerSpy = sinon.spy();
+            const disconnectingSpy = sinon.spy();
+            const disconnectedSpy = sinon.spy();
+            ticker.on("connected", connectedSpy);
+            ticker.on("initialtickerinforeceived", initTickerSpy);
+            ticker.on("disconnecting", disconnectingSpy);
+            ticker.on("disconnected", disconnectedSpy);
+
+            await ticker.reconnect();
+
+            let status = ticker.getStatus();
+            assert(disconnectingSpy.calledOnce);
+            assert(disconnectedSpy.calledOnce);
+            assert(connectedSpy.calledOnce);
+            assert(initTickerSpy.calledOnce);
+            assert.equal(status.reconnectCount, 1);
+            assert.isAtMost(status.connectedAt - connectionTime, 10000);
+        });
+
+        it("should reconnect if heartbeat times out"); // how to mock heartbeattimeout?
+
         it("should terminate for SIGINT");
 
         it("should return ticker after ticker updated"); // how to mock ticker update?

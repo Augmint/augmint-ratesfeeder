@@ -333,7 +333,7 @@ class TickerProvider extends EventEmitter {
         log.debug(this.name, "connected.", JSON.stringify(data));
         this.connectedAt = new Date();
         this.isConnected = true;
-        if (this.reconnectCount) {
+        if (this.reconnectCount !== null) {
             this.reconnectCount++;
         } else {
             this.reconnectCount = 0; // first connect
