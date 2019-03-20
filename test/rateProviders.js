@@ -28,33 +28,38 @@ describe("GDAX ticker provider tests", () => {
     it("should connect and have initial ticker", async () => {
         // how to avoid ticker update triggering right after connect when websocket/pusher connected?
         const connectedSpy = sinon.spy();
+        const initTickerSpy = sinon.spy();
         ticker.on("connected", connectedSpy);
+        ticker.on("initialtickerinforeceived", initTickerSpy);
 
         const connectionTime = new Date();
         await ticker.connectAndSubscribe();
-        assert(connectedSpy.calledOnce);
 
-        let status = ticker.getStatus();
+        ticker.on("initialtickerinforeceived", async () => {
+            let status = ticker.getStatus();
+            assert(connectedSpy.calledOnce);
+            assert(initTickerSpy.calledOnce);
 
-        assert.equal(status.name, "GDAX");
-        assert(status.isConnected);
-        assert.isAtMost(status.connectedAt - connectionTime, 5000);
-        assert.isAtMost(status.lastHeartbeat - connectionTime, 5000);
-        assert.equal(status.reconnectCount, 0);
+            assert.equal(status.name, tickerName);
+            assert(status.isConnected);
+            assert.isAtMost(status.connectedAt - connectionTime, 5000);
+            assert.isAtMost(status.lastHeartbeat - connectionTime, 5000);
+            assert.equal(status.reconnectCount, 0);
 
-        assert.isNumber(status.lastTicker.price);
-        assert.isAtMost(status.connectedAt - status.lastTicker.time, 1000);
+            assert.isNumber(status.lastTicker.price);
+            assert.isAtMost(status.connectedAt - status.lastTicker.time, 10000);
 
-        const disconnectedSpy = sinon.spy();
-        const disconnectingSpy = sinon.spy();
-        ticker.on("disconnecting", disconnectingSpy);
-        ticker.on("disconnected", disconnectedSpy);
+            const disconnectedSpy = sinon.spy();
+            const disconnectingSpy = sinon.spy();
+            ticker.on("disconnecting", disconnectingSpy);
+            ticker.on("disconnected", disconnectedSpy);
 
-        await ticker.disconnect();
-        assert(disconnectedSpy.calledOnce);
-        assert(disconnectingSpy.calledOnce);
-        status = ticker.getStatus();
-        assert(!status.isConnected);
+            await ticker.disconnect();
+            assert(disconnectedSpy.calledOnce);
+            assert(disconnectingSpy.calledOnce);
+            status = ticker.getStatus();
+            assert(!status.isConnected);
+        });
     });
 
     it("should terminate for SIGINT");

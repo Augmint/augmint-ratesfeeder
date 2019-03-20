@@ -26,6 +26,9 @@ Subscribe to the following events emitted:
     // on connected:
     <ticker instance>.on("connected", (info, tickerProvider) => { ... } );
 
+    // on first tickerinfo received:
+    <ticker instance>.on("initialtickerinforeceived", (tickerInfo, tickerProvider)=> { ... } );
+
     // on Every trade:
     <ticker instance>.on("trade", (newTicker, prevTicker, tickerProvider) => { ... } );
 
@@ -425,7 +428,11 @@ class TickerProvider extends EventEmitter {
                 const tickerInfo = await this.fetchCurrentTicker();
                 if (!this.lastTicker || !this.lastTicker.price || this.lastTicker.price === 0) {
                     this.lastTicker = tickerInfo;
+                    this.emit("initialtickerinforeceived", tickerInfo, this);
                 }
+            } else {
+                // ticker already recevied at connect but we still emmit the event
+                this.emit("initialtickerinforeceived", this.lastTicker, this);
             }
         } catch (error) {
             log.error(this.name, "can't fetch initial ticker info. fetchCurrentTicker failed. ", error);
