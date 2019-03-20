@@ -16,33 +16,43 @@ statusApi.start(ratesFeeder);
 ratesFeeder
     .init()
 
-    .then(() => {
-        subscribeTickers.connectAll();
-
+    .then(async () => {
         subscribeTickers.tickers.forEach(tickerProvider => {
             // tickerProvider.on("pricechange", onTickerPriceChange);
             // tickerProvider.on("trade", onTickerTrade);
-            // tickerProvider.on("disconnecting", onTickerDisconnecting);
+            tickerProvider.on("connected", onTickerConnected);
+            tickerProvider.on("disconnecting", onTickerDisconnecting);
+            tickerProvider.on("disconnected", onTickerDisconnected);
             tickerProvider.on("heartbeattimeout", onTickerHeartbeatTimeout);
         });
 
-        // function onTickerDisconnecting(tickerProvider) {
-        //     log.debug(tickerProvider.name, "disconnecting.", "WebSocket readyState: ", tickerProvider.ws.readyState);
-        // }
-
-        function onTickerHeartbeatTimeout(ticker) {
-            log.warn(ticker.name, "heartbeat timed out. Reconnecting.");
-        }
-
-        // function onTickerPriceChange(newTicker, prevTicker, ticker) {
-        //     log.log("onTickerPriceChange", ticker.name, "\t", JSON.stringify(newTicker), JSON.stringify(prevTicker));
-        // }
-        //
-        // function onTickerTrade(newTicker, prevTicker, tickerProvider) {
-        //     log.debug("onTickerTrade", tickerProvider.name, "\t", JSON.stringify(newTicker), JSON.stringify(prevTicker));
-        // }
+        await subscribeTickers.connectAll();
     })
     .catch(error => {
         log.error("Error: Can't init ratesFeeder. Details:\n", error);
         process.exit(1);
     });
+
+function onTickerConnected(data, tickerProvider) {
+    log.info(tickerProvider.name, "connected.", data);
+}
+
+function onTickerDisconnecting(tickerProvider) {
+    log.debug(tickerProvider.name, "disconnecting.");
+}
+
+function onTickerDisconnected(tickerProvider) {
+    log.info(tickerProvider.name, "disconnected.");
+}
+
+function onTickerHeartbeatTimeout(ticker) {
+    log.warn(ticker.name, "heartbeat timed out. Reconnecting.");
+}
+
+// function onTickerPriceChange(newTicker, prevTicker, ticker) {
+//     log.log("onTickerPriceChange", ticker.name, "\t", JSON.stringify(newTicker), JSON.stringify(prevTicker));
+// }
+//
+// function onTickerTrade(newTicker, prevTicker, tickerProvider) {
+//     log.debug("onTickerTrade", tickerProvider.name, "\t", JSON.stringify(newTicker), JSON.stringify(prevTicker));
+// }

@@ -35,6 +35,9 @@ Subscribe to the following events emitted:
     // on intentional disconnect
     <ticker instance>.on("disconnecting", (tickerProvider) => {...});
 
+    // provider disconnected
+    <ticker instance>.on("disconnected", (tickerProvider) => {...});
+
     // when server closed connection and TickerProvider tries to reconnect
     <ticker instance>.on("heartbeattimeout", (tickerProvider) => {...});
 
@@ -49,9 +52,11 @@ TODO:
 
 */
 const log = require("src/log.js")("TickerProvider");
+const sigintHandler = require("src/helpers/sigintHandler.js");
 const WebSocket = require("ws");
 const Pusher = require("pusher-js");
 const EventEmitter = require("events");
+
 const DEFAULT_WSS_HEARTBEAT_TIMEOUT = 60000; // reconnect if last no heartbeat for this time (in ms). Only for WSS connections, pusher has activity_timeout
 const DEFAULT_PING_INTERVAL = null; // most providers don't require pinging but bitfinex disconnects after a while without it
 const MESSAGE_TYPES = {
@@ -74,11 +79,11 @@ const PROVIDER_TYPES = {
 class TickerProvider extends EventEmitter {
     constructor(definition) {
         super();
+        this.name = definition.NAME;
         this.isDisconnecting = false; // to restart connection if it's closed by server
-        ["SIGINT", "SIGHUP", "SIGTERM"].forEach(signal => process.on(signal, signal => this._exit(signal)));
+        sigintHandler(this._exit.bind(this), this.name);
 
         this.lastHeartbeat = null;
-        this.name = definition.NAME;
         this.lastTicker = null; // { price, volume, time}
         this.isConnected = false;
         this.connectedAt = null;
@@ -153,7 +158,7 @@ class TickerProvider extends EventEmitter {
         };
     }
 
-    connectAndSubscribe() {
+    async connectAndSubscribe() {
         try {
             if (!this.isDisconnecting) {
                 // set initial price for providers which doesn't return initial snapshot after subscription
@@ -224,26 +229,35 @@ class TickerProvider extends EventEmitter {
                 default:
                     // we sholdn't get here...
                     throw new Error(
-                        "Error: Can't connect to " + this.name + ". Invalid provider type: " + this.providerType
+                        `Error: Can't connect to ${this.name}. Invalid provider type: ${this.providerType}`
                     );
                 }
             }
         } catch (error) {
             throw new Error("Error: Can't connect to " + this.name + ". Details:\n" + error);
         }
+
+        return new Promise(resolve => {
+            this.once("connected", () => resolve());
+        });
     }
 
-    unsubscribe() {
+    async unsubscribe() {
         if (this.providerType === PROVIDER_TYPES.WSS && this.unsubscribePayload) {
             this.ws.send(JSON.stringify(this.unsubscribePayload));
         } else {
-            this.pusherSocket.unsubscribe(this.pusherChannelName);
-            this.pusherChannel.unbind_all();
+            await this.pusherSocket.unsubscribe(this.pusherChannelName);
+            await this.pusherChannel.unbind_all();
         }
     }
 
-    disconnect() {
+    async disconnect() {
+        if (this.isDisconnecting || !this.isConnected) {
+            return;
+        }
+
         this.isDisconnecting = true;
+
         this.emit("disconnecting", this);
 
         clearTimeout(this.heartbeatTimeoutTimer);
@@ -252,8 +266,7 @@ class TickerProvider extends EventEmitter {
         switch (this.providerType) {
         case PROVIDER_TYPES.WSS:
             if (this.ws && this.ws.readyState === WebSocket.OPEN) {
-                this.isDisconnecting = true;
-                this.unsubscribe();
+                await this.unsubscribe();
                 this.ws.close();
             }
             break;
@@ -265,7 +278,7 @@ class TickerProvider extends EventEmitter {
                         this.pusherSocket.connection.state === "connected") ||
                     this.pusherSocket.connection.state == "connecting"
             ) {
-                this.unsubscribe();
+                await this.unsubscribe();
                 this.pusherSocket.unbind_all();
                 this.pusherSocket.disconnect();
             }
@@ -275,11 +288,18 @@ class TickerProvider extends EventEmitter {
             // we sholdn't get here...
             log.error("Error:", this.name + "disconnect(). Invalid provider type: " + this.providerType);
         }
+
+        return new Promise(resolve => {
+            this.once("disconnected", () => resolve());
+        });
     }
 
-    reconnect() {
-        this.disconnect();
-        this.connectAndSubscribe();
+    async reconnect() {
+        await this.disconnect();
+        await this.connectAndSubscribe();
+        return new Promise(resolve => {
+            this.once("connected", resolve());
+        });
     }
 
     ping() {
@@ -322,8 +342,9 @@ class TickerProvider extends EventEmitter {
             clearTimeout(this.heartbeatTimeoutTimer);
         } else {
             log.warn(this.name, " websocket closed unexpectedly."); // heartbeatTimeout will reconnect
-            clearTimeout(this.pingIntervalTimer);
         }
+        clearTimeout(this.pingIntervalTimer);
+        this.emit("disconnected", this);
     }
 
     _onProviderSubscriptionSucceeded(data) {
@@ -331,7 +352,7 @@ class TickerProvider extends EventEmitter {
             // GDAX doesn't send any message after connection
             this._onProviderConnected({ info: "on subscription" });
         }
-        log.info("\u2713", this.name, "subscribed.", JSON.stringify(data));
+        log.debug("\u2713", this.name, "subscribed.", JSON.stringify(data));
         if (data.chanId) {
             // Bitfinex returns chanId which is required for unsubscribe
             this.unsubscribePayload.chanId = data.chanId;
@@ -409,9 +430,9 @@ class TickerProvider extends EventEmitter {
         }
     }
 
-    _exit(signal) {
+    async _exit(signal) {
         log.info(`*** ${this.name} received ${signal}. Disconnecting.`);
-        this.disconnect();
+        await this.disconnect();
     }
 
     _heartbeatReceived() {
