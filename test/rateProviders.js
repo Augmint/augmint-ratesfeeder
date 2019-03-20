@@ -28,7 +28,7 @@ tickerDefs.forEach(tickerDef => {
             assert.isNull(status.lastTicker);
         });
 
-        it("should connect and have initial ticker", async () => {
+        it("should connect and have initial ticker then disconnect", async () => {
             // how to avoid ticker update triggering right after connect when websocket/pusher connected?
             const ticker = new TickerProvider(tickerDef.definition);
             const connectedSpy = sinon.spy();
@@ -36,34 +36,40 @@ tickerDefs.forEach(tickerDef => {
             ticker.on("connected", connectedSpy);
             ticker.on("initialtickerinforeceived", initTickerSpy);
 
+            const initTickerEventPromise = new Promise(resolve =>
+                ticker.on("initialtickerinforeceived", () => resolve())
+            );
+
             const connectionTime = new Date();
             await ticker.connectAndSubscribe();
 
-            ticker.on("initialtickerinforeceived", async () => {
-                let status = ticker.getStatus();
-                assert(connectedSpy.calledOnce);
-                assert(initTickerSpy.calledOnce);
+            await initTickerEventPromise;
 
-                assert.equal(status.name, tickerName);
-                assert(status.isConnected);
-                assert.isAtMost(status.connectedAt - connectionTime, 5000);
-                assert.isAtMost(status.lastHeartbeat - connectionTime, 5000);
-                assert.equal(status.reconnectCount, 0);
+            let status = ticker.getStatus();
+            assert(connectedSpy.calledOnce);
+            assert(initTickerSpy.calledOnce);
 
-                assert.isNumber(status.lastTicker.price);
-                assert.isAtMost(status.connectedAt - status.lastTicker.time, 10000);
+            assert.equal(status.name, tickerName);
+            assert(status.isConnected);
+            assert.isAtMost(status.connectedAt - connectionTime, 5000);
+            assert.isAtMost(status.lastHeartbeat - connectionTime, 5000);
+            assert.equal(status.reconnectCount, 0);
 
-                const disconnectedSpy = sinon.spy();
-                const disconnectingSpy = sinon.spy();
-                ticker.on("disconnecting", disconnectingSpy);
-                ticker.on("disconnected", disconnectedSpy);
+            assert.isNumber(status.lastTicker.price);
+            assert.isAtMost(status.connectedAt - status.lastTicker.time, 10000);
 
-                await ticker.disconnect();
-                assert(disconnectedSpy.calledOnce);
-                assert(disconnectingSpy.calledOnce);
-                status = ticker.getStatus();
-                assert(!status.isConnected);
-            });
+            const disconnectedSpy = sinon.spy();
+            const disconnectingSpy = sinon.spy();
+            ticker.on("disconnecting", disconnectingSpy);
+            ticker.on("disconnected", disconnectedSpy);
+
+            await ticker.disconnect();
+
+            assert(disconnectedSpy.calledOnce);
+            assert(disconnectingSpy.calledOnce);
+            status = ticker.getStatus();
+            assert.equal(status.reconnectCount, 0);
+            assert(!status.isConnected);
         });
 
         it("should terminate for SIGINT");
