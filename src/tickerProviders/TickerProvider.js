@@ -428,17 +428,24 @@ class TickerProvider extends EventEmitter {
     async _fetchInitialTickerInfo() {
         // only works for tickerProviders where fetchCurrentTicker is implemented
         try {
+            let tickerInfo;
             if (this.fetchCurrentTicker) {
-                const tickerInfo = await this.fetchCurrentTicker();
-                if (!this.lastTicker || !this.lastTicker.price || this.lastTicker.price === 0) {
+                tickerInfo = await this.fetchCurrentTicker();
+                if (
+                    !this.lastTicker ||
+                    !this.lastTicker.price ||
+                    this.lastTicker.price === 0 ||
+                    this.lastTicker.time < tickerInfo.time
+                ) {
                     this.lastTicker = tickerInfo;
-                    this.emit("initialtickerinforeceived", tickerInfo, this);
                 }
             } else {
-                // ticker already recevied at connect but we still emmit the event
-                this.emit("initialtickerinforeceived", this.lastTicker, this);
+                // ticker recevied after connect but we will still emmit the event from here
+                tickerInfo = this.lastTicker;
             }
-            log.debug(this.name, "initial ticker info received");
+
+            this.emit("initialtickerinforeceived", tickerInfo, this);
+            log.debug(this.name, "initial ticker info received", this.lastTicker);
         } catch (error) {
             log.error(this.name, "can't fetch initial ticker info. fetchCurrentTicker failed. ", error);
         }
