@@ -434,9 +434,9 @@ class TickerProvider extends EventEmitter {
                 // ticker already recevied at connect but we still emmit the event
                 this.emit("initialtickerinforeceived", this.lastTicker, this);
             }
+            log.debug(this.name, "initial ticker info received");
         } catch (error) {
             log.error(this.name, "can't fetch initial ticker info. fetchCurrentTicker failed. ", error);
-            process.exit(1);
         }
     }
 
