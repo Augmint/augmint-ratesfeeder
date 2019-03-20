@@ -9,18 +9,13 @@ const gdaxTickerProviderDef = require("src/tickerProviders/gdaxTickerProvider.js
 const krakenTickerProviderDef = require("src/tickerProviders/krakenTickerProvider.js");
 const bitstampTickerProviderDef = require("src/tickerProviders/bitstampTickerProvider.js");
 
-let ticker;
-
 const tickerDefs = [gdaxTickerProviderDef, krakenTickerProviderDef, bitstampTickerProviderDef];
 
 tickerDefs.forEach(tickerDef => {
     const tickerName = tickerDef.definition.NAME;
     describe(tickerName + " ticker provider tests", () => {
-        before(() => {
-            ticker = new TickerProvider(tickerDef.definition);
-        });
-
         it("should have correct state before connect", () => {
+            const ticker = new TickerProvider(tickerDef.definition);
             const status = ticker.getStatus();
             assert.isString(status.name);
             assert.isNotEmpty(status.name);
@@ -35,6 +30,7 @@ tickerDefs.forEach(tickerDef => {
 
         it("should connect and have initial ticker", async () => {
             // how to avoid ticker update triggering right after connect when websocket/pusher connected?
+            const ticker = new TickerProvider(tickerDef.definition);
             const connectedSpy = sinon.spy();
             const initTickerSpy = sinon.spy();
             ticker.on("connected", connectedSpy);
