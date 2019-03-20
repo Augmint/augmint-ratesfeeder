@@ -263,6 +263,10 @@ class TickerProvider extends EventEmitter {
         clearTimeout(this.heartbeatTimeoutTimer);
         clearTimeout(this.pingIntervalTimer);
 
+        const returnPromise = new Promise(resolve => {
+            this.once("disconnected", () => resolve());
+        });
+
         switch (this.providerType) {
         case PROVIDER_TYPES.WSS:
             if (this.ws && this.ws.readyState === WebSocket.OPEN) {
@@ -289,9 +293,7 @@ class TickerProvider extends EventEmitter {
             log.error("Error:", this.name + "disconnect(). Invalid provider type: " + this.providerType);
         }
 
-        return new Promise(resolve => {
-            this.once("disconnected", () => resolve());
-        });
+        return returnPromise;
     }
 
     async reconnect() {
