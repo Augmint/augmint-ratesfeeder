@@ -26,6 +26,9 @@ Subscribe to the following events emitted:
     // on connected:
     <ticker instance>.on("connected", (info, tickerProvider) => { ... } );
 
+    // on first tickerinfo received:
+    <ticker instance>.on("initialtickerinforeceived", (tickerInfo, tickerProvider)=> { ... } );
+
     // on Every trade:
     <ticker instance>.on("trade", (newTicker, prevTicker, tickerProvider) => { ... } );
 
@@ -51,6 +54,7 @@ TODO:
 - BitStamp released V2 websocket API which is without pusher - we could get rid of pusher specific code
 
 */
+require("src/env.js"); // for tests to have proper env vars too
 const log = require("src/log.js")("TickerProvider");
 const sigintHandler = require("src/helpers/sigintHandler.js");
 const WebSocket = require("ws");
@@ -160,9 +164,12 @@ class TickerProvider extends EventEmitter {
 
     async connectAndSubscribe() {
         try {
-            if (!this.isDisconnecting) {
-                // set initial price for providers which doesn't return initial snapshot after subscription
-                this._fetchInitialTickerInfo();
+            if (this.isDisconnecting) {
+                return; // ignore if it was called by heartbeatTimeout
+            } else {
+                const connectedEventPromise = new Promise(resolve => {
+                    this.once("connected", () => resolve());
+                });
 
                 switch (this.providerType) {
                 case PROVIDER_TYPES.WSS:
@@ -232,14 +239,15 @@ class TickerProvider extends EventEmitter {
                         `Error: Can't connect to ${this.name}. Invalid provider type: ${this.providerType}`
                     );
                 }
+
+                // set initial price for providers which doesn't return initial snapshot after subscription
+                await this._fetchInitialTickerInfo();
+
+                return connectedEventPromise;
             }
         } catch (error) {
             throw new Error("Error: Can't connect to " + this.name + ". Details:\n" + error);
         }
-
-        return new Promise(resolve => {
-            this.once("connected", () => resolve());
-        });
     }
 
     async unsubscribe() {
@@ -325,7 +333,7 @@ class TickerProvider extends EventEmitter {
         log.debug(this.name, "connected.", JSON.stringify(data));
         this.connectedAt = new Date();
         this.isConnected = true;
-        if (this.reconnectCount) {
+        if (this.reconnectCount !== null) {
             this.reconnectCount++;
         } else {
             this.reconnectCount = 0; // first connect
@@ -420,15 +428,26 @@ class TickerProvider extends EventEmitter {
     async _fetchInitialTickerInfo() {
         // only works for tickerProviders where fetchCurrentTicker is implemented
         try {
+            let tickerInfo;
             if (this.fetchCurrentTicker) {
-                const tickerInfo = await this.fetchCurrentTicker();
-                if (!this.lastTicker || !this.lastTicker.price || this.lastTicker.price === 0) {
+                tickerInfo = await this.fetchCurrentTicker();
+                if (
+                    !this.lastTicker ||
+                    !this.lastTicker.price ||
+                    this.lastTicker.price === 0 ||
+                    this.lastTicker.time < tickerInfo.time
+                ) {
                     this.lastTicker = tickerInfo;
                 }
+            } else {
+                // ticker recevied after connect but we will still emmit the event from here
+                tickerInfo = this.lastTicker;
             }
+
+            this.emit("initialtickerinforeceived", tickerInfo, this);
+            log.debug(this.name, "initial ticker info received", this.lastTicker);
         } catch (error) {
             log.error(this.name, "can't fetch initial ticker info. fetchCurrentTicker failed. ", error);
-            process.exit(1);
         }
     }
 

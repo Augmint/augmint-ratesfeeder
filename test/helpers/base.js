@@ -1,5 +1,5 @@
 /* Generic test helper functions */
-const RatesFeeder = require("../../src/RatesFeeder.js");
+const RatesFeeder = require("src/RatesFeeder.js");
 const ratesFeeder = new RatesFeeder([]);
 const assert = require("chai").assert;
 
