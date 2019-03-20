@@ -5,59 +5,98 @@ const sinon = require("sinon");
 
 const TickerProvider = require("src/tickerProviders/TickerProvider.js");
 
-const gdaxTickerProvider = require("src/tickerProviders/gdaxTickerProvider.js");
-let ticker;
+const gdaxTickerProviderDef = require("src/tickerProviders/gdaxTickerProvider.js");
+const krakenTickerProviderDef = require("src/tickerProviders/krakenTickerProvider.js");
+const bitstampTickerProviderDef = require("src/tickerProviders/bitstampTickerProvider.js");
 
-describe("GDAX ticker provider tests", () => {
-    before(() => {
-        ticker = new TickerProvider(gdaxTickerProvider.definition);
+const tickerDefs = [gdaxTickerProviderDef, krakenTickerProviderDef, bitstampTickerProviderDef];
+
+tickerDefs.forEach(tickerDef => {
+    const tickerName = tickerDef.definition.NAME;
+    describe(tickerName + " ticker provider tests", () => {
+        it("should have correct state before connect", () => {
+            const ticker = new TickerProvider(tickerDef.definition);
+            const status = ticker.getStatus();
+            assert.isString(status.name);
+            assert.isNotEmpty(status.name);
+
+            assert(!status.isConnected);
+            assert.isNull(status.connectedAt);
+            assert.isNull(status.lastHeartbeat);
+            assert.isNull(status.reconnectCount);
+
+            assert.isNull(status.lastTicker);
+        });
+
+        it("should connect and have initial ticker then disconnect", async () => {
+            // how to avoid ticker update triggering right after connect when websocket/pusher connected?
+            const ticker = new TickerProvider(tickerDef.definition);
+            const connectedSpy = sinon.spy();
+            const initTickerSpy = sinon.spy();
+            ticker.on("connected", connectedSpy);
+            ticker.on("initialtickerinforeceived", initTickerSpy);
+
+            const connectionTime = new Date();
+            await ticker.connectAndSubscribe();
+
+            let status = ticker.getStatus();
+            assert(connectedSpy.calledOnce);
+            assert(initTickerSpy.calledOnce);
+
+            assert.equal(status.name, tickerName);
+            assert(status.isConnected);
+            assert.isAtMost(status.connectedAt - connectionTime, 5000);
+            assert.isAtMost(status.lastHeartbeat - connectionTime, 5000);
+            assert.equal(status.reconnectCount, 0);
+
+            assert.isNumber(status.lastTicker.price);
+            assert.isAtMost(status.connectedAt - status.lastTicker.time, 10000);
+
+            const disconnectedSpy = sinon.spy();
+            const disconnectingSpy = sinon.spy();
+            ticker.on("disconnecting", disconnectingSpy);
+            ticker.on("disconnected", disconnectedSpy);
+
+            await ticker.disconnect();
+
+            assert(disconnectedSpy.calledOnce);
+            assert(disconnectingSpy.calledOnce);
+            status = ticker.getStatus();
+            assert.equal(status.reconnectCount, 0);
+            assert(!status.isConnected);
+        });
+
+        it("should reconnect when reconnect called", async () => {
+            const ticker = new TickerProvider(tickerDef.definition);
+
+            await ticker.connectAndSubscribe();
+
+            const connectionTime = new Date();
+
+            const connectedSpy = sinon.spy();
+            const initTickerSpy = sinon.spy();
+            const disconnectingSpy = sinon.spy();
+            const disconnectedSpy = sinon.spy();
+            ticker.on("connected", connectedSpy);
+            ticker.on("initialtickerinforeceived", initTickerSpy);
+            ticker.on("disconnecting", disconnectingSpy);
+            ticker.on("disconnected", disconnectedSpy);
+
+            await ticker.reconnect();
+
+            let status = ticker.getStatus();
+            assert(disconnectingSpy.calledOnce);
+            assert(disconnectedSpy.calledOnce);
+            assert(connectedSpy.calledOnce);
+            assert(initTickerSpy.calledOnce);
+            assert.equal(status.reconnectCount, 1);
+            assert.isAtMost(status.connectedAt - connectionTime, 10000);
+        });
+
+        it("should reconnect if heartbeat times out"); // how to mock heartbeattimeout?
+
+        it("should terminate for SIGINT");
+
+        it("should return ticker after ticker updated"); // how to mock ticker update?
     });
-
-    it("should have correct state before connect", () => {
-        const status = ticker.getStatus();
-        assert.equal(status.name, "GDAX");
-
-        assert(!status.isConnected);
-        assert.isNull(status.connectedAt);
-        assert.isNull(status.lastHeartbeat);
-        assert.isNull(status.reconnectCount);
-
-        assert.isNull(status.lastTicker);
-    });
-
-    it("should connect and have initial ticker", async () => {
-        // how to avoid ticker update triggering right after connect when websocket/pusher connected?
-        const connectedSpy = sinon.spy();
-        ticker.on("connected", connectedSpy);
-
-        await ticker.connectAndSubscribe();
-        assert(connectedSpy.calledOnce);
-
-        const connectionTime = new Date();
-        let status = ticker.getStatus();
-
-        assert.equal(status.name, "GDAX");
-        assert(status.isConnected);
-        assert(Math.abs(status.connectedAt - connectionTime < 3));
-        assert(Math.abs(status.lastHeartbeat - connectionTime) < 3);
-        assert.equal(status.reconnectCount, 0);
-
-        assert.isNumber(status.lastTicker.price);
-        assert(Math.abs(status.lastTicker.time - connectionTime) < 5);
-
-        const disconnectedSpy = sinon.spy();
-        const disconnectingSpy = sinon.spy();
-        ticker.on("disconnecting", disconnectingSpy);
-        ticker.on("disconnected", disconnectedSpy);
-
-        await ticker.disconnect();
-        assert(disconnectedSpy.calledOnce);
-        assert(disconnectingSpy.calledOnce);
-        status = ticker.getStatus();
-        assert(!status.isConnected);
-    });
-
-    it("should terminate for SIGINT");
-
-    it("should return ticker after ticker updated"); // how to mock ticker update?
 });
