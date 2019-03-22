@@ -1,6 +1,6 @@
 const log = require("src/log.js")("TickerProvider");
 const EventEmitter = require("events");
-const sigintHandler = require("src/helpers/sigintHandler.js");
+const setExitHandler = require("src/helpers/sigintHandler.js");
 
 class BaseTickerProvider extends EventEmitter {
     // for each provider implement a  getter for name
@@ -13,10 +13,10 @@ class BaseTickerProvider extends EventEmitter {
         this.isConnected = false;
         this.isDisconnecting = false;
         this.error = null;
-        sigintHandler(this._exit.bind(this), this.name);
     }
 
     async connect(data) {
+        setExitHandler(this._exit.bind(this), this.name);
         this.emit("connecting", data, this);
         this.on("tickerreceived", this._onTickerUpdate.bind(this)); // emit from provider
 

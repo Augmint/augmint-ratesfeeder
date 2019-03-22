@@ -17,7 +17,7 @@ TODO:
 
 require("src/env.js");
 const log = require("src/log.js")("ratesFeeder");
-const sigintHandler = require("src/helpers/sigintHandler.js");
+const setExitHandler = require("src/helpers/sigintHandler.js");
 const Web3 = require("web3");
 const contractsHelper = require("src/helpers/contractsHelper.js");
 const promiseTimeout = require("src/helpers/promiseTimeout.js");
@@ -61,7 +61,7 @@ class RatesFeeder {
     }
 
     async init() {
-        sigintHandler(this.exit.bind(this), "RatesFeeder");
+        setExitHandler(this.exit.bind(this), "RatesFeeder");
 
         this.account = process.env.ETHEREUM_ACCOUNT;
 
