@@ -21,7 +21,7 @@ class CoinbaseHttpTicker extends BaseHttpTickerProvider {
         const tickerData = {
             price: parseFloat(data.price),
             lastTradePrice: parseFloat(data.price),
-            lastTradeTime: new Date(data.time)
+            time: new Date(data.time)
         };
 
         return tickerData;
