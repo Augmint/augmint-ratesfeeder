@@ -1,4 +1,6 @@
-/* Integration test with real rates provider feeds */
+/* Integration test with mocked ticker provider data
+
+*/
 const chai = require("chai");
 const assert = chai.assert;
 const sinon = require("sinon");
@@ -8,7 +10,7 @@ const CoinbaseTickerProvider = require("src/tickerProviders/CoinbaseHttpTicker.j
 const KrakenTickerProvider = require("src/tickerProviders/KrakenHttpTicker.js");
 const BitstampTickerProvider = require("src/tickerProviders/BitStampHttpTicker.js");
 
-const tickerProviders = [CoinbaseTickerProvider]; //, KrakenTickerProvider, BitstampTickerProvider];
+const tickerProviders = [CoinbaseTickerProvider, KrakenTickerProvider, BitstampTickerProvider];
 const MOCKS = {
     CoinbaseHttpTicker: {
         host: "https://api.pro.coinbase.com",
@@ -165,18 +167,18 @@ tickerProviders.forEach(Provider => {
                 .reply(404);
 
             const ticker = new Provider();
-            await ticker
-                .connect()
-                .then(() => {
-                    assert.fail("Shouldn't connect if first poll's fetch fails");
-                })
-                .catch(error => {
-                    let status = ticker.getStatus();
-                    assert(!status.isConnected);
-                    assert.isNotEmpty(status.error);
-                    assert.equal(status.pollErrorCount, 1);
-                    assert.isAtMost(status.lastPollAttemptAt - status.startedAt, 1000);
-                });
+
+            const providerErrorSpy = sinon.spy();
+            ticker.on("providerError", providerErrorSpy);
+
+            await ticker.connect().catch(() => true /* this is what we expect */);
+
+            let status = ticker.getStatus();
+            assert(!status.isConnected, "Shouldn't be connected when fetch fails (mock connect succeeded?)");
+            assert.isNotEmpty(status.error);
+            assert.equal(status.pollErrorCount, 1);
+            assert.isAtMost(status.lastPollAttemptAt - status.startedAt, 1000);
+            assert(providerErrorSpy.calledOnce, "should have an error or 2nd try");
         });
 
         it("should not abort if a poll fails after initial suceeded", async () => {
@@ -207,12 +209,12 @@ tickerProviders.forEach(Provider => {
             ticker.on("providerError", providerErrorSpy);
             await ticker.poll();
 
-            assert(providerErrorSpy.calledOnce);
             status = ticker.getStatus();
-            assert(!status.isConnected);
+            assert(!status.isConnected, "Shouldn't be connected when fetch fails (mock connect succeeded?)");
             assert.isNotEmpty(status.error);
             assert.equal(status.pollErrorCount, 1);
             assert.isAtMost(status.lastPollAttemptAt - status.startedAt, 1000);
+            assert(providerErrorSpy.calledOnce);
 
             /************************
              * 3rd: okResponse2
