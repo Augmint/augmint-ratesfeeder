@@ -18,7 +18,7 @@ ratesFeeder
 
     .then(async () => {
         subscribeTickers.tickers.forEach(tickerProvider => {
-            // tickerProvider.on("tickerreceived", onTickerReceived);
+            tickerProvider.on("tickerreceived", onTickerReceived);
             tickerProvider.on("tickerupdated", onTickerUpdated);
             tickerProvider.on("tickerpricechanged", onTickerPriceChanged);
 
@@ -53,14 +53,19 @@ function onTickerDisconnected(tickerProvider) {
     log.info(tickerProvider.name, "disconnected.");
 }
 
+function onTickerReceived(newTicker, tickerProvider) {
+    //log.debug(tickerProvider.name, "ticker received", JSON.stringify(newTicker));
+}
+
 function onTickerUpdated(newTicker, prevTicker, tickerProvider) {
-    //log.debug(tickerProvider.name, "ticker updated", JSON.stringify(newTicker), JSON.stringify(prevTicker));
+    log.debug(tickerProvider.name, "ticker updated", JSON.stringify(newTicker), JSON.stringify(prevTicker));
 }
 
 function onTickerPriceChanged(newTicker, prevTicker, tickerProvider) {
-    //log.debug(tickerProvider.name, "ticker price changed", JSON.stringify(newTicker), JSON.stringify(prevTicker));
+    log.debug(tickerProvider.name, "ticker price changed", JSON.stringify(newTicker), JSON.stringify(prevTicker));
 }
 
 function onProviderError(error, tickerProvider) {
     // NB: sever errors are logged from module with log.error
+    log.debug(tickerProvider.name, "providerError", error);
 }
