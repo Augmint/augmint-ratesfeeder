@@ -18,12 +18,16 @@ ratesFeeder
 
     .then(async () => {
         subscribeTickers.tickers.forEach(tickerProvider => {
-            // tickerProvider.on("pricechange", onTickerPriceChange);
-            // tickerProvider.on("trade", onTickerTrade);
+            tickerProvider.on("tickerreceived", onTickerReceived);
+            tickerProvider.on("tickerupdated", onTickerUpdated);
+            tickerProvider.on("tickerpricechanged", onTickerPriceChanged);
+
+            tickerProvider.on("connecting", onTickerConnecting);
             tickerProvider.on("connected", onTickerConnected);
             tickerProvider.on("disconnecting", onTickerDisconnecting);
             tickerProvider.on("disconnected", onTickerDisconnected);
-            tickerProvider.on("heartbeattimeout", onTickerHeartbeatTimeout);
+
+            tickerProvider.on("providerError", onProviderError);
         });
 
         await subscribeTickers.connectAll();
@@ -33,26 +37,35 @@ ratesFeeder
         process.exit(1);
     });
 
+function onTickerConnecting(data, tickerProvider) {
+    log.debug(tickerProvider.name, "connecting.", data);
+}
+
 function onTickerConnected(data, tickerProvider) {
     log.info(tickerProvider.name, "connected.", data);
 }
 
 function onTickerDisconnecting(tickerProvider) {
-    log.debug(tickerProvider.name, "disconnecting.");
+    //log.debug(tickerProvider.name, "disconnecting.");
 }
 
 function onTickerDisconnected(tickerProvider) {
     log.info(tickerProvider.name, "disconnected.");
 }
 
-function onTickerHeartbeatTimeout(ticker) {
-    log.warn(ticker.name, "heartbeat timed out. Reconnecting.");
+function onTickerReceived(newTicker, tickerProvider) {
+    //log.debug(tickerProvider.name, "ticker received", JSON.stringify(newTicker));
 }
 
-// function onTickerPriceChange(newTicker, prevTicker, ticker) {
-//     log.log("onTickerPriceChange", ticker.name, "\t", JSON.stringify(newTicker), JSON.stringify(prevTicker));
-// }
-//
-// function onTickerTrade(newTicker, prevTicker, tickerProvider) {
-//     log.debug("onTickerTrade", tickerProvider.name, "\t", JSON.stringify(newTicker), JSON.stringify(prevTicker));
-// }
+function onTickerUpdated(newTicker, prevTicker, tickerProvider) {
+    log.debug(tickerProvider.name, "ticker updated", JSON.stringify(newTicker), JSON.stringify(prevTicker));
+}
+
+function onTickerPriceChanged(newTicker, prevTicker, tickerProvider) {
+    log.debug(tickerProvider.name, "ticker price changed", JSON.stringify(newTicker), JSON.stringify(prevTicker));
+}
+
+function onProviderError(error, tickerProvider) {
+    // NB: sever errors are logged from module with log.error
+    log.debug(tickerProvider.name, "providerError", error);
+}
