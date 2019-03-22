@@ -3,7 +3,7 @@ const log = require("src/log.js")("TickerProvider");
 const BaseTickerProvider = require("./BaseTickerProvider.js");
 const fetch = require("node-fetch");
 
-const DEFAULT_HTTP_POLL_INTERVAL = 120000;
+const DEFAULT_HTTP_POLL_INTERVAL = 30000;
 const DEFAULT_HTTP_FETCH_TIMEOUT = 30000;
 const DEFAULT_LOG_POLL_ERROR_AGAIN_AFTER_X_MINS = 120;
 
