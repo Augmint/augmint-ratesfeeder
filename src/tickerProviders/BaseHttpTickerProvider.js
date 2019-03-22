@@ -58,6 +58,7 @@ class BaseHttpTickerProvider extends BaseTickerProvider {
                 const newTicker = this.processTickerData(data);
 
                 newTicker.receivedAt = new Date();
+                newTicker.requestedAt = this.lastPollAttemptAt;
 
                 this.isConnected = true;
 

@@ -25,6 +25,7 @@ class KrakenHttpTicker extends BaseHttpTickerProvider {
         const data = _data.result.XETHZEUR;
 
         // p[1] is Last 24 hours volume weighted average price.
+        // NB: Kraken doesn't return timestamp of data so it will be set to fetch initiation time by super.poll()
         const tickerData = { price: parseFloat(data.p[1]), lastTradePrice: parseFloat(data.c[0]) };
 
         return tickerData;

@@ -26,7 +26,11 @@ const MOCKS = {
         },
         okResponse2: {
             price: "122.56000000",
-            time: "2019-03-21T08:42:26.745Z"
+            time: "2019-03-21T08:42:29.745Z"
+        },
+        okResponseOlderThanSecond: {
+            price: "122.59000000",
+            time: "2019-03-21T08:41:29.745Z"
         }
     },
     KrakenHttpTicker: {
@@ -56,6 +60,15 @@ const MOCKS = {
                     p: ["122.48602", "122.45195"]
                 }
             }
+        },
+        okResponseOlderThanSecond: {
+            error: [],
+            result: {
+                XETHZEUR: {
+                    c: ["123.72000", "26.81340111"],
+                    p: ["122.48602", "122.45195"]
+                }
+            }
         }
     },
     BitstampHttpTicker: {
@@ -75,6 +88,11 @@ const MOCKS = {
         okResponse2: {
             last: "123.75",
             timestamp: "1553157131",
+            vwap: "122.04"
+        },
+        okResponseOlderThanSecond: {
+            last: "123.99",
+            timestamp: "1553157130",
             vwap: "122.04"
         }
     }
@@ -99,7 +117,9 @@ tickerProviders.forEach(Provider => {
             assert.equal(status.pollErrorCount, 0);
 
             assert.isNull(status.lastTicker.price);
+            assert.isNull(status.lastTicker.requestedAt);
             assert.isNull(status.lastTicker.receivedAt);
+            assert.isNull(status.lastTicker.time);
         });
 
         it("should connect and have initial ticker then disconnect", async () => {
@@ -135,7 +155,9 @@ tickerProviders.forEach(Provider => {
             assert(!status.isDisconnecting);
             assert.isAtMost(status.startedAt - startedAt, 2000);
             assert.isAtMost(status.lastPollAttemptAt - startedAt, 2000);
+            assert.isAtMost(status.lastTicker.requestedAt - status.lastPollAttemptAt, 500);
             assert.isAtMost(status.lastTicker.receivedAt - status.lastPollAttemptAt, 10000);
+            assert.isNotEmpty(status.lastTicker.time);
 
             assert.isNumber(status.lastTicker.price);
 
@@ -234,6 +256,47 @@ tickerProviders.forEach(Provider => {
             assert(tickerReceivedSpy.calledOnce);
             assert(tickerUpdatedSpy.calledOnce);
             assert(tickerPriceChangedSpy.calledOnce);
+        });
+
+        it.only("Should only update ticker if time is newer", async () => {
+            const scope = nock(MOCKS[tickerClassName].host)
+                // after connect
+                .get(MOCKS[tickerClassName].path)
+                .reply(200, MOCKS[tickerClassName].okResponse1)
+
+                // newever data arrives first
+                .get(MOCKS[tickerClassName].path)
+                .reply(200, MOCKS[tickerClassName].okResponse2)
+
+                // the 2nd response with older data will arrive later
+                .get(MOCKS[tickerClassName].path)
+                .delay(100)
+                .reply(200, MOCKS[tickerClassName].okResponseOlderThanSecond);
+
+            const ticker = new Provider();
+
+            /************************
+             * 1st: initial okResponse2 after connect
+             ************************/
+            await ticker.connect(); // gets okResponse1 ticker
+
+            /************************
+             * 2nd: 2 request in parallel, okResponseOlderThanSecond wil arrive later
+             ************************/
+            const tickerReceivedSpy = sinon.spy();
+            const tickerUpdatedSpy = sinon.spy();
+            const tickerPriceChangedSpy = sinon.spy();
+            ticker.on("tickerreceived", tickerReceivedSpy);
+            ticker.on("tickerupdated", tickerUpdatedSpy);
+            ticker.on("tickerpricechanged", tickerPriceChangedSpy);
+
+            let tickerBefore;
+            await Promise.all([ticker.poll().then(() => (tickerBefore = ticker.lastTicker)), ticker.poll()]);
+
+            assert(tickerReceivedSpy.calledTwice);
+            assert(tickerUpdatedSpy.calledOnce);
+            assert(tickerPriceChangedSpy.calledOnce);
+            assert.equal(ticker.lastTicker, tickerBefore);
         });
     });
 });

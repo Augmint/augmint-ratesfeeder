@@ -8,7 +8,12 @@ class BaseTickerProvider extends EventEmitter {
     constructor() {
         super();
 
-        this.lastTicker = { price: null, receivedAt: null };
+        this.lastTicker = {
+            price: null, // if provider supports vwap then vwap (Kraken & Bitstamp) otherwise last trade price (Coinbase)
+            time: null, // time of data. NB: some providers (Kraken) doesn't return it. In that case it will be set to requestedAt time
+            requestedAt: null,
+            receivedAt: null
+        };
         this.startedAt = new Date();
         this.isConnected = false;
         this.isDisconnecting = false;
@@ -18,7 +23,7 @@ class BaseTickerProvider extends EventEmitter {
     async connect(data) {
         setExitHandler(this._exit.bind(this), this.name);
         this.emit("connecting", data, this);
-        this.on("tickerreceived", this._onTickerUpdate.bind(this)); // emit from provider
+        this.on("tickerreceived", this._onTickerReceived.bind(this)); // emit from provider
 
         const connectedEventPromise = new Promise(resolve => {
             this.once("connected", () => {
@@ -62,13 +67,24 @@ class BaseTickerProvider extends EventEmitter {
         };
     }
 
-    _onTickerUpdate(newTicker) {
+    _onTickerReceived(newTicker) {
         // don't call directly, just emit("tickerrecevied", <newTickerInfo>, this)
-        const prevTicker = this.lastTicker;
-        this.lastTicker = newTicker;
-        this.emit("tickerupdated", newTicker, prevTicker, this);
-        if (!prevTicker.price || newTicker.price !== prevTicker.price) {
-            this.emit("tickerpricechanged", newTicker, prevTicker, this);
+
+        if (!newTicker.time) {
+            // if provider doesn't return timestamp of data then we use time we sent the request
+            newTicker.time = newTicker.requestedAt;
+        }
+
+        if (this.lastTicker.time === null || newTicker.time > this.lastTicker.time) {
+            // only update if it's a newer ticker.
+            const prevTicker = this.lastTicker;
+            this.lastTicker = newTicker;
+
+            this.emit("tickerupdated", newTicker, prevTicker, this);
+
+            if (!prevTicker.price || newTicker.price !== prevTicker.price) {
+                this.emit("tickerpricechanged", newTicker, prevTicker, this);
+            }
         }
     }
 
