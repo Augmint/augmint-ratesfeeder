@@ -77,9 +77,9 @@ describe("RatesFeeder: real exchange rate tests", () => {
         const expectedCheckedAt = new Date();
 
         ratesFeeder.tickers = [
-            { name: "testTicker1", lastTicker: { price: 657.62, time: expectedCheckedAt }, getStatus },
-            { name: "testTicker2", lastTicker: { price: 659.52, time: expectedCheckedAt }, getStatus },
-            { name: "testTicker3", lastTicker: { price: 659.2, time: expectedCheckedAt }, getStatus }
+            { name: "testTicker1", lastTicker: { price: 657.62, receivedAt: expectedCheckedAt }, getStatus },
+            { name: "testTicker2", lastTicker: { price: 659.52, receivedAt: expectedCheckedAt }, getStatus },
+            { name: "testTicker3", lastTicker: { price: 659.2, receivedAt: expectedCheckedAt }, getStatus }
         ];
 
         const expectedPrice = 659.2;
@@ -132,9 +132,9 @@ describe("RatesFeeder: real exchange rate tests", () => {
         );
 
         ratesFeeder.tickers = [
-            { name: "testTicker1", lastTicker: { price: newLivePrice, time: expectedCheckedAt }, getStatus },
-            { name: "testTicker2", lastTicker: { price: newLivePrice, time: expectedCheckedAt }, getStatus },
-            { name: "testTicker3", lastTicker: { price: newLivePrice, time: expectedCheckedAt }, getStatus }
+            { name: "testTicker1", lastTicker: { price: newLivePrice, receivedAt: expectedCheckedAt }, getStatus },
+            { name: "testTicker2", lastTicker: { price: newLivePrice, receivedAt: expectedCheckedAt }, getStatus },
+            { name: "testTicker3", lastTicker: { price: newLivePrice, receivedAt: expectedCheckedAt }, getStatus }
         ];
 
         await ratesFeeder.checkTickerPrice();
@@ -171,9 +171,9 @@ describe("RatesFeeder: real exchange rate tests", () => {
         const expectedCheckedAt = new Date();
 
         ratesFeeder.tickers = [
-            { name: "testTicker1", lastTicker: { price: null, time: expectedCheckedAt }, getStatus },
-            { name: "testTicker2", lastTicker: { price: 0, time: expectedCheckedAt }, getStatus },
-            { name: "testTicker3", lastTicker: { price: null, time: expectedCheckedAt }, getStatus }
+            { name: "testTicker1", lastTicker: { price: null, receivedAt: expectedCheckedAt }, getStatus },
+            { name: "testTicker2", lastTicker: { price: 0, receivedAt: expectedCheckedAt }, getStatus },
+            { name: "testTicker3", lastTicker: { price: null, receivedAt: expectedCheckedAt }, getStatus }
         ];
 
         const prevStoredRate = await ratesFeeder.augmintRatesInstance.methods.rates(BYTES_CCY).call();

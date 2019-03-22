@@ -143,7 +143,7 @@ class RatesFeeder {
                 "    ",
                 t.name,
                 t.lastTicker ? t.lastTicker.price : "null",
-                t.lastTicker ? t.lastTicker.time : "null"
+                t.lastTicker ? t.lastTicker.receivedAt : "null"
             );
         });
 
