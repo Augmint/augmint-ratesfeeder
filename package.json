@@ -1,43 +1,56 @@
 {
-    "name": "augmint-ratesfeeder",
-    "version": "0.1.0",
-    "description": "Rates feeder (Oracle) for Augmint Contracts",
-    "main": "./src/RatesFeeder.js",
-    "directories": {
-        "doc": "docs",
-        "test": "test"
-    },
-    "dependencies": {
-        "cross-env": "5.2.0",
-        "dotenv": "6.2.0",
-        "fetch": "1.1.0",
-        "web3": "1.0.0-beta.36"
-    },
-    "devDependencies": {
-        "mocha": "6.0.2"
-    },
-    "scripts": {
-        "start":
-            "echo 'This app does not have a start feature (for now). Run (or schedule): yarn updaterates[:production]'",
-        "updaterates": "cross-env NODE_ENV=development node ./src/runFeeder.js",
-        "updaterates:production":
-            "cross-env NODE_ENV=production node ./src/runFeeder.js",
-        "test": "cross-env NODE_ENV=test mocha --timeout 10000 --exit",
-        "contracts:migrate": "cd augmint-contracts && yarn migrate",
-        "ganache:run": "cd augmint-contracts && yarn ganache:run",
-        "contracts:runmigrate": "cd augmint-contracts && yarn runmigrate"
-    },
-    "repository": {
-        "type": "git",
-        "url": "git+https://github.com/Augmint/augmint-ratesfeeder.git"
-    },
-    "keywords": [
-        "solidity smart-contracts solidity-contracts dapp finance money cryptocurrencies cryptocurrency A-EUR augmint rates feeder oracle oracles"
-    ],
-    "author": "Augmint",
-    "license": "GPL-3.0",
-    "bugs": {
-        "url": "https://github.com/Augmint/augmint-ratesfeeder/issues"
-    },
-    "homepage": "https://github.com/Augmint/augmint-ratesfeeder#readme"
+  "name": "augmint-ratesfeeder",
+  "version": "0.2.0",
+  "description": "Rates feeder (Oracle) for Augmint Contracts",
+  "main": "./src/RatesFeeder.js",
+  "directories": {
+    "doc": "docs",
+    "test": "test"
+  },
+  "engines": {
+    "node": "10.15.3",
+    "yarn": "1.13.0"
+  },
+  "dependencies": {
+    "cross-env": "5.2.0",
+    "dotenv": "7.0.0",
+    "express": "4.16.4",
+    "http-errors": "1.7.2",
+    "morgan": "1.9.1",
+    "node-fetch": "2.3.0",
+    "pusher-js": "4.4.0",
+    "ulog": "2.0.0-beta.6",
+    "web3": "1.0.0-beta.36"
+  },
+  "devDependencies": {
+    "chai": "4.2.0",
+    "mocha": "6.0.2",
+    "nock": "10.0.6",
+    "sinon": "7.3.0"
+  },
+  "optionalDependencies": {
+    "bufferutil": "4.0.1",
+    "utf-8-validate": "5.0.2"
+  },
+  "scripts": {
+    "start": "yarn cross-env NODE_ENV=development NODE_PATH=. node ./src/runFeeder.js",
+    "start:production": "yarn cross-env NODE_ENV=production NODE_PATH=. node ./src/runFeeder.js",
+    "test": "yarn cross-env NODE_ENV=test NODE_PATH=. mocha --timeout 10000 --exit",
+    "contracts:migrate": "cd augmint-contracts && yarn migrate",
+    "ganache:run": "cd augmint-contracts && yarn ganache:run",
+    "contracts:runmigrate": "cd augmint-contracts && yarn runmigrate"
+  },
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/Augmint/augmint-ratesfeeder.git"
+  },
+  "keywords": [
+    "solidity smart-contracts solidity-contracts dapp finance money cryptocurrencies cryptocurrency A-EUR augmint rates feeder oracle oracles"
+  ],
+  "author": "Augmint",
+  "license": "GPL-3.0",
+  "bugs": {
+    "url": "https://github.com/Augmint/augmint-ratesfeeder/issues"
+  },
+  "homepage": "https://github.com/Augmint/augmint-ratesfeeder#readme"
 }
