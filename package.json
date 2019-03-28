@@ -20,7 +20,7 @@
     "node-fetch": "2.3.0",
     "pusher-js": "4.4.0",
     "ulog": "2.0.0-beta.6",
-    "web3": "1.0.0-beta.36"
+    "web3": "1.0.0-beta.51"
   },
   "devDependencies": {
     "chai": "4.2.0",
