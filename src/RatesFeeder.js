@@ -108,7 +108,7 @@ class RatesFeeder {
             }.bind(this);
         }
 
-        if (!Web3.utils.isAddress(this.account)) {
+        if (!this.web3.utils.isAddress(this.account)) {
             throw new Error("Invalid ETHEREUM_ACCOUNT: " + this.account);
         }
         this.web3.eth.defaultAccount = this.account;
@@ -202,7 +202,7 @@ class RatesFeeder {
     }
 
     async getAugmintRate(currency) {
-        const bytesCCY = Web3.utils.asciiToHex(currency);
+        const bytesCCY = this.web3.utils.asciiToHex(currency);
         const storedRateInfo = await this.augmintRatesInstance.methods.rates(bytesCCY).call();
         return {
             price: parseInt(storedRateInfo.rate) / this.decimalsDiv,
@@ -216,7 +216,7 @@ class RatesFeeder {
         try {
             // Send data back contract on-chain
             //process.stdout.write("Sending to the Augmint Contracts using Rates.setRate() ... "); // should be logged into a file
-            const bytes_ccy = Web3.utils.asciiToHex(currency);
+            const bytes_ccy = this.web3.utils.asciiToHex(currency);
             const priceToSend = Math.round(price * this.decimalsDiv);
 
             const setRateTx = this.augmintRatesInstance.methods.setRate(bytes_ccy, priceToSend);
