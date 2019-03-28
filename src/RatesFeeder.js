@@ -128,8 +128,8 @@ class RatesFeeder {
                 : null;
 
         log.info(`
-            AugmintToken contract: ${this.augmintTokenInstance._address}
-            Rates contract: ${this.augmintRatesInstance._address}`);
+            AugmintToken contract: ${this.augmintTokenInstance.options.address}
+            Rates contract: ${this.augmintRatesInstance.options.address}`);
 
         this.isInitialised = true;
     }
@@ -224,7 +224,7 @@ class RatesFeeder {
 
             const txToSign = {
                 from: this.account,
-                to: this.augmintRatesInstance._address,
+                to: this.augmintRatesInstance.options.address,
                 gas: SET_RATE_GAS_LIMIT,
                 data: encodedABI
             };
@@ -310,8 +310,8 @@ class RatesFeeder {
         const status = {
             isInitialised: this.isInitialised,
             account: this.account,
-            ratesContract: this.augmintRatesInstance ? this.augmintRatesInstance._address : "null",
-            augmintTokenContract: this.augmintTokenInstance ? this.augmintTokenInstance._address : "null",
+            ratesContract: this.augmintRatesInstance ? this.augmintRatesInstance.options.address : "null",
+            augmintTokenContract: this.augmintTokenInstance ? this.augmintTokenInstance.options.address : "null",
             lastTickerCheckResult: this.lastTickerCheckResult
         };
         return status;
