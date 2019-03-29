@@ -234,11 +234,15 @@ class RatesFeeder {
             const setRateTx = this.augmintRatesInstance.methods.setRate(bytes_ccy, priceToSend);
             const encodedABI = setRateTx.encodeABI();
 
+            // TODO: remove this once this fixed: https://github.com/ethereum/web3.js/issues/2610
+            const chainId = await this.web3.eth.net.getId();
+
             const txToSign = {
                 from: this.account,
                 to: this.augmintRatesInstance.options.address,
                 gas: SET_RATE_GAS_LIMIT,
-                data: encodedABI
+                data: encodedABI,
+                chainId
             };
 
             const [signedTx, nonce] = await Promise.all([
