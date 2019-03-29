@@ -88,13 +88,26 @@ class RatesFeeder {
 
         const projectId = process.env.INFURA_PROJECT_ID || "";
 
+        const options = {
+            defaultAccount: this.account,
+            transactionConfirmationBlocks: process.env.LOG_AS_SUCCESS_AFTER_N_CONFIRMATION
+        };
+
         switch (process.env.PROVIDER_TYPE) {
         case "http": {
-            this.web3 = await new Web3(new Web3.providers.HttpProvider(process.env.PROVIDER_URL + projectId));
+            this.web3 = new Web3(
+                new Web3.providers.HttpProvider(process.env.PROVIDER_URL + projectId),
+                null,
+                options
+            );
             break;
         }
         case "websocket": {
-            this.web3 = await new Web3(new Web3.providers.WebsocketProvider(process.env.PROVIDER_URL + projectId));
+            this.web3 = new Web3(
+                new Web3.providers.WebsocketProvider(process.env.PROVIDER_URL + projectId),
+                null,
+                options
+            );
             break;
         }
         default:
@@ -111,7 +124,6 @@ class RatesFeeder {
         if (!this.web3.utils.isAddress(this.account)) {
             throw new Error("Invalid ETHEREUM_ACCOUNT: " + this.account);
         }
-        this.web3.eth.defaultAccount = this.account;
 
         [this.augmintRatesInstance, this.augmintTokenInstance] = await Promise.all([
             contractsHelper.connectLatest(this.web3, Rates),
