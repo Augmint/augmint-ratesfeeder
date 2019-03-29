@@ -1,6 +1,7 @@
 /* Generic test helper functions */
 const RatesFeeder = require("src/RatesFeeder.js");
-const ratesFeeder = new RatesFeeder([]);
+const { web3 } = require("src/ethereumConnection.js");
+const ratesFeeder = new RatesFeeder(web3, []);
 const assert = require("chai").assert;
 
 module.exports = {

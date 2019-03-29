@@ -18,7 +18,6 @@ TODO:
 require("src/env.js");
 const log = require("src/log.js")("ratesFeeder");
 const setExitHandler = require("src/helpers/sigintHandler.js");
-const Web3 = require("web3");
 const contractsHelper = require("src/helpers/contractsHelper.js");
 const promiseTimeout = require("src/helpers/promiseTimeout.js");
 const TokenAEur = require("src/abiniser/abis/TokenAEur_ABI_2ea91d34a7bfefc8f38ef0e8a5ae24a5.json");
@@ -42,14 +41,14 @@ const median = values => {
 };
 
 class RatesFeeder {
-    constructor(tickers) {
+    constructor(web3, tickers) {
         this.tickers = tickers; // array of TickerProvider objects
         // list of tickernames:
         this.tickerNames = this.tickers.reduce(
             (accum, ticker, idx) => (idx == 0 ? ticker.name : accum + ", " + ticker.name),
             ""
         );
-        this.web3 = null;
+        this.web3 = web3;
         this.isInitialised = false;
         this.decimalsDiv = null;
         this.decimals = null;
@@ -68,47 +67,15 @@ class RatesFeeder {
         log.info(
             // IMPORTANT: NEVER expose keys even not in logs!
             `** RatesFeedeer starting with settings:
-            NODE_ENV: ${process.env.NODE_ENV}
-            PROVIDER_TYPE: ${process.env.PROVIDER_TYPE}
-            PROVIDER_URL: ${process.env.PROVIDER_URL}
-            INFURA_PROJECT_ID: ${
-    process.env.INFURA_PROJECT_ID
-        ? process.env.INFURA_PROJECT_ID.substring(0, 4) + "... rest hidden"
-        : "not provided"
-}
             ETHEREUM_ACCOUNT: ${process.env.ETHEREUM_ACCOUNT}
             ETHEREUM_PRIVATE_KEY: ${process.env.ETHEREUM_PRIVATE_KEY ? "[secret]" : "not provided"}
             LIVE_PRICE_THRESHOLD_PT: ${process.env.LIVE_PRICE_THRESHOLD_PT}
             SETRATE_TX_TIMEOUT: ${process.env.SETRATE_TX_TIMEOUT}
             CHECK_TICKER_PRICE_INTERVAL: ${process.env.CHECK_TICKER_PRICE_INTERVAL}
-            LOG: ${process.env.LOG} (log.level: ${log.level})
-            LOG_AS_SUCCESS_AFTER_N_CONFIRMATION: ${process.env.LOG_AS_SUCCESS_AFTER_N_CONFIRMATION}
             Ticker providers: ${this.tickerNames}`
         );
 
-        const projectId = process.env.INFURA_PROJECT_ID || "";
-
-        switch (process.env.PROVIDER_TYPE) {
-        case "http": {
-            this.web3 = await new Web3(new Web3.providers.HttpProvider(process.env.PROVIDER_URL + projectId));
-            break;
-        }
-        case "websocket": {
-            this.web3 = await new Web3(new Web3.providers.WebsocketProvider(process.env.PROVIDER_URL + projectId));
-            break;
-        }
-        default:
-            throw new Error(process.env.PROVIDER_TYPE + " is not supported yet");
-        }
-
-        //dirty hack for web3@1.0.0 support for localhost testrpc, see https://github.com/trufflesuite/truffle-contract/issues/56#issuecomment-331084530
-        if (typeof this.web3.currentProvider.sendAsync !== "function") {
-            this.web3.currentProvider.sendAsync = function() {
-                return this.web3.currentProvider.send.apply(this.web3.currentProvider, arguments);
-            }.bind(this);
-        }
-
-        if (!Web3.utils.isAddress(this.account)) {
+        if (!this.web3.utils.isAddress(this.account)) {
             throw new Error("Invalid ETHEREUM_ACCOUNT: " + this.account);
         }
         this.web3.eth.defaultAccount = this.account;
@@ -202,7 +169,7 @@ class RatesFeeder {
     }
 
     async getAugmintRate(currency) {
-        const bytesCCY = Web3.utils.asciiToHex(currency);
+        const bytesCCY = this.web3.utils.asciiToHex(currency);
         const storedRateInfo = await this.augmintRatesInstance.methods.rates(bytesCCY).call();
         return {
             price: parseInt(storedRateInfo.rate) / this.decimalsDiv,
@@ -216,7 +183,7 @@ class RatesFeeder {
         try {
             // Send data back contract on-chain
             //process.stdout.write("Sending to the Augmint Contracts using Rates.setRate() ... "); // should be logged into a file
-            const bytes_ccy = Web3.utils.asciiToHex(currency);
+            const bytes_ccy = this.web3.utils.asciiToHex(currency);
             const priceToSend = Math.round(price * this.decimalsDiv);
 
             const setRateTx = this.augmintRatesInstance.methods.setRate(bytes_ccy, priceToSend);

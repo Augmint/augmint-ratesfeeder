@@ -1,5 +1,6 @@
 require("src/env.js");
 const log = require("src/log.js")("runFeeder");
+const ethereumConnection = require("src/ethereumConnection.js");
 const RatesFeeder = require("src/RatesFeeder.js");
 const subscribeTickers = require("src/subscribeTickers.js");
 const statusApi = require("src/statusApi/server.js");
@@ -10,7 +11,7 @@ log.info(
     LOG: ${process.env.LOG}`
 );
 
-const ratesFeeder = new RatesFeeder(subscribeTickers.tickers);
+const ratesFeeder = new RatesFeeder(ethereumConnection.web3, subscribeTickers.tickers);
 statusApi.start(ratesFeeder);
 
 ratesFeeder
