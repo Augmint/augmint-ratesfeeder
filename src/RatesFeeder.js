@@ -64,21 +64,8 @@ class RatesFeeder {
 
         this.account = process.env.RATESFEEDER_ETHEREUM_ACCOUNT;
 
-        log.info(
-            // IMPORTANT: NEVER expose keys even not in logs!
-            `** RatesFeedeer starting with settings:
-            RATESFEEDER_ETHEREUM_ACCOUNT: ${process.env.RATESFEEDER_ETHEREUM_ACCOUNT}
-            RATESFEEDER_ETHEREUM_PRIVATE_KEY: ${
-    process.env.RATESFEEDER_ETHEREUM_PRIVATE_KEY ? "[secret]" : "not provided"
-}
-            RATESFEEDER_LIVE_PRICE_THRESHOLD_PT: ${process.env.RATESFEEDER_LIVE_PRICE_THRESHOLD_PT}
-            RATESFEEDER_SETRATE_TX_TIMEOUT: ${process.env.RATESFEEDER_SETRATE_TX_TIMEOUT}
-            RATESFEEDER_CHECK_TICKER_PRICE_INTERVAL: ${process.env.RATESFEEDER_CHECK_TICKER_PRICE_INTERVAL}
-            Ticker providers: ${this.tickerNames}`
-        );
-
         if (!this.web3.utils.isAddress(this.account)) {
-            throw new Error("Invalid ETHEREUM_ACCOUNT: " + this.account);
+            throw new Error("Invalid RATESFEEDER_ETHEREUM_ACCOUNT: " + this.account);
         }
         this.web3.eth.defaultAccount = this.account;
 
@@ -96,11 +83,21 @@ class RatesFeeder {
                 ? setTimeout(this.checkTickerPrice.bind(this), process.env.RATESFEEDER_CHECK_TICKER_PRICE_INTERVAL)
                 : null;
 
-        log.info(`
-            AugmintToken contract: ${this.augmintTokenInstance._address}
-            Rates contract: ${this.augmintRatesInstance._address}`);
-
         this.isInitialised = true;
+        log.info(
+            // IMPORTANT: NEVER expose keys even not in logs!
+            `** RatesFeedeer started with settings:
+            RATESFEEDER_ETHEREUM_ACCOUNT: ${process.env.RATESFEEDER_ETHEREUM_ACCOUNT}
+            RATESFEEDER_ETHEREUM_PRIVATE_KEY: ${
+    process.env.RATESFEEDER_ETHEREUM_PRIVATE_KEY ? "[secret]" : "not provided"
+}
+            RATESFEEDER_LIVE_PRICE_THRESHOLD_PT: ${process.env.RATESFEEDER_LIVE_PRICE_THRESHOLD_PT}
+            RATESFEEDER_SETRATE_TX_TIMEOUT: ${process.env.RATESFEEDER_SETRATE_TX_TIMEOUT}
+            RATESFEEDER_CHECK_TICKER_PRICE_INTERVAL: ${process.env.RATESFEEDER_CHECK_TICKER_PRICE_INTERVAL}
+            Ticker providers: ${this.tickerNames}
+            AugmintToken contract: ${this.augmintTokenInstance._address}
+            Rates contract: ${this.augmintRatesInstance._address}`
+        );
     }
 
     // check current price from different exchanges and update Augmint price on chain if difference is beyond threshold
