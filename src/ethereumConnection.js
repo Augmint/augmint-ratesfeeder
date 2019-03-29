@@ -1,5 +1,5 @@
 require("src/env.js");
-const log = require("src/log.js")("ethereumConnection");
+const log = require("src/log.js")("runFeeder");
 const Web3 = require("web3");
 
 module.exports = {
