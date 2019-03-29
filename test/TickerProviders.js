@@ -258,7 +258,7 @@ tickerProviders.forEach(Provider => {
             assert(tickerPriceChangedSpy.calledOnce);
         });
 
-        it.only("Should only update ticker if time is newer", async () => {
+        it("Should only update ticker if time is newer", async () => {
             const scope = nock(MOCKS[tickerClassName].host)
                 // after connect
                 .get(MOCKS[tickerClassName].path)
