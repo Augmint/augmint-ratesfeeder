@@ -13,23 +13,12 @@ module.exports = {
         }
         return ratesFeeder;
     },
-    getEvents,
     assertEvent,
     assertNoEvents
 };
 
 function getEvents(contractInstance, eventName) {
-    return contractInstance.getPastEvents(eventName);
-    // console.log(contractInstance.events)
-    // return new Promise((resolve, reject) => {
-    //     contractInstance.events[eventName]().get((err, res) => {
-    //         if (err) {
-    //             return reject(err);
-    //         }
-    //
-    //         resolve(res);
-    //     });
-    // });
+    return contractInstance.getPastEvents(eventName, { fromBlock: "latest" });
 }
 
 async function assertEvent(contractInstance, eventName, _expectedArgs) {
