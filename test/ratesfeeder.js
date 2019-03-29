@@ -89,7 +89,7 @@ describe("RatesFeeder: real exchange rate tests", () => {
         assert.notEqual(prevStoredRate.rate, expectedPrice);
         assert(
             (Math.abs(expectedPrice - prevStoredRate.rate) / prevStoredRate.rate) * 100 >
-                process.env.LIVE_PRICE_THRESHOLD_PT
+                process.env.RATESFEEDER_LIVE_PRICE_THRESHOLD_PT
         );
 
         await ratesFeeder.checkTickerPrice();
@@ -126,7 +126,7 @@ describe("RatesFeeder: real exchange rate tests", () => {
         const origtickers = ratesFeeder.tickers;
         const expectedCheckedAt = new Date();
         const prevStoredRate = await ratesFeeder.augmintRatesInstance.methods.rates(BYTES_CCY).call();
-        const expectedLivePriceDifference = (process.env.LIVE_PRICE_THRESHOLD_PT - 0.1) / 100;
+        const expectedLivePriceDifference = (process.env.RATESFEEDER_LIVE_PRICE_THRESHOLD_PT - 0.1) / 100;
         const newLivePrice = parseFloat(
             ((prevStoredRate.rate / ratesFeeder.decimalsDiv) * (1 + expectedLivePriceDifference)).toFixed(2)
         );

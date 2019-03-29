@@ -62,16 +62,18 @@ class RatesFeeder {
     async init() {
         setExitHandler(this.exit.bind(this), "RatesFeeder");
 
-        this.account = process.env.ETHEREUM_ACCOUNT;
+        this.account = process.env.RATESFEEDER_ETHEREUM_ACCOUNT;
 
         log.info(
             // IMPORTANT: NEVER expose keys even not in logs!
             `** RatesFeedeer starting with settings:
-            ETHEREUM_ACCOUNT: ${process.env.ETHEREUM_ACCOUNT}
-            ETHEREUM_PRIVATE_KEY: ${process.env.ETHEREUM_PRIVATE_KEY ? "[secret]" : "not provided"}
-            LIVE_PRICE_THRESHOLD_PT: ${process.env.LIVE_PRICE_THRESHOLD_PT}
-            SETRATE_TX_TIMEOUT: ${process.env.SETRATE_TX_TIMEOUT}
-            CHECK_TICKER_PRICE_INTERVAL: ${process.env.CHECK_TICKER_PRICE_INTERVAL}
+            RATESFEEDER_ETHEREUM_ACCOUNT: ${process.env.RATESFEEDER_ETHEREUM_ACCOUNT}
+            RATESFEEDER_ETHEREUM_PRIVATE_KEY: ${
+    process.env.RATESFEEDER_ETHEREUM_PRIVATE_KEY ? "[secret]" : "not provided"
+}
+            RATESFEEDER_LIVE_PRICE_THRESHOLD_PT: ${process.env.RATESFEEDER_LIVE_PRICE_THRESHOLD_PT}
+            RATESFEEDER_SETRATE_TX_TIMEOUT: ${process.env.RATESFEEDER_SETRATE_TX_TIMEOUT}
+            RATESFEEDER_CHECK_TICKER_PRICE_INTERVAL: ${process.env.RATESFEEDER_CHECK_TICKER_PRICE_INTERVAL}
             Ticker providers: ${this.tickerNames}`
         );
 
@@ -90,8 +92,8 @@ class RatesFeeder {
 
         // Schedule first check
         this.checkTickerPriceTimer =
-            process.env.CHECK_TICKER_PRICE_INTERVAL > 0
-                ? setTimeout(this.checkTickerPrice.bind(this), process.env.CHECK_TICKER_PRICE_INTERVAL)
+            process.env.RATESFEEDER_CHECK_TICKER_PRICE_INTERVAL > 0
+                ? setTimeout(this.checkTickerPrice.bind(this), process.env.RATESFEEDER_CHECK_TICKER_PRICE_INTERVAL)
                 : null;
 
         log.info(`
@@ -139,8 +141,11 @@ class RatesFeeder {
         };
 
         if (livePrice > 0) {
-            if (livePriceDifference * 100 > parseFloat(process.env.LIVE_PRICE_THRESHOLD_PT)) {
-                await promiseTimeout(process.env.SETRATE_TX_TIMEOUT, this.updatePrice(CCY, livePrice)).catch(error => {
+            if (livePriceDifference * 100 > parseFloat(process.env.RATESFEEDER_LIVE_PRICE_THRESHOLD_PT)) {
+                await promiseTimeout(
+                    process.env.RATESFEEDER_SETRATE_TX_TIMEOUT,
+                    this.updatePrice(CCY, livePrice)
+                ).catch(error => {
                     // NB: it's not necessarily an error, ethereum network might be just slow.
                     // we still schedule our next check which will send an update at next tick of checkTickerPrice()
                     log.error("updatePrice failed with Error: ", error);
@@ -152,8 +157,8 @@ class RatesFeeder {
 
         // Schedule next check
         this.checkTickerPriceTimer =
-            process.env.CHECK_TICKER_PRICE_INTERVAL > 0
-                ? setTimeout(this.checkTickerPrice.bind(this), process.env.CHECK_TICKER_PRICE_INTERVAL)
+            process.env.RATESFEEDER_CHECK_TICKER_PRICE_INTERVAL > 0
+                ? setTimeout(this.checkTickerPrice.bind(this), process.env.RATESFEEDER_CHECK_TICKER_PRICE_INTERVAL)
                 : null;
     }
 
@@ -197,7 +202,7 @@ class RatesFeeder {
             };
 
             const [signedTx, nonce] = await Promise.all([
-                this.web3.eth.accounts.signTransaction(txToSign, process.env.ETHEREUM_PRIVATE_KEY),
+                this.web3.eth.accounts.signTransaction(txToSign, process.env.RATESFEEDER_ETHEREUM_PRIVATE_KEY),
                 this.web3.eth.getTransactionCount(this.account)
             ]);
 
