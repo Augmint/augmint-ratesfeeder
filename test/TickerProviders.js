@@ -157,7 +157,7 @@ tickerProviders.forEach(Provider => {
             assert.isAtMost(status.lastPollAttemptAt - startedAt, 2000);
             assert.isAtMost(status.lastTicker.requestedAt - status.lastPollAttemptAt, 500);
             assert.isAtMost(status.lastTicker.receivedAt - status.lastPollAttemptAt, 10000);
-            assert.isNotEmpty(status.lastTicker.time);
+            assert.instanceOf(status.lastTicker.time, Date);
 
             assert.isNumber(status.lastTicker.price);
 
