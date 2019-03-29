@@ -10,7 +10,7 @@ module.exports = {
 
 let web3;
 
-log.error(
+log.info(
     // IMPORTANT: NEVER expose keys even not in logs!
     `** ethereumConnection starting with settings:
     NODE_ENV: ${process.env.NODE_ENV}
