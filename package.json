@@ -12,6 +12,7 @@
     "yarn": "1.13.0"
   },
   "dependencies": {
+    "bignumber.js": "5.0.0",
     "cross-env": "5.2.0",
     "dotenv": "7.0.0",
     "express": "4.16.4",
@@ -39,6 +40,11 @@
     "contracts:migrate": "cd augmint-contracts && yarn migrate",
     "ganache:run": "cd augmint-contracts && yarn ganache:run",
     "contracts:runmigrate": "cd augmint-contracts && yarn runmigrate"
+  },
+  "greenkeeper": {
+    "ignore": [
+      "bignumber.js"
+    ]
   },
   "repository": {
     "type": "git",
