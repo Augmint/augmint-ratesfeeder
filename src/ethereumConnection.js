@@ -16,7 +16,6 @@ setExitHandler(_exit, "ethereumConnection");
 log.info(
     // IMPORTANT: NEVER expose keys even not in logs!
     `** ethereumConnection starting with settings:
-    NODE_ENV: ${process.env.NODE_ENV}
     PROVIDER_TYPE: ${process.env.PROVIDER_TYPE}
     PROVIDER_URL: ${process.env.PROVIDER_URL}
     INFURA_PROJECT_ID: ${
@@ -24,7 +23,6 @@ log.info(
         ? process.env.INFURA_PROJECT_ID.substring(0, 4) + "... rest hidden"
         : "not provided"
 }
-    LOG: ${process.env.LOG} (log.level: ${log.level})
     LOG_AS_SUCCESS_AFTER_N_CONFIRMATION: ${process.env.LOG_AS_SUCCESS_AFTER_N_CONFIRMATION}`
 );
 
