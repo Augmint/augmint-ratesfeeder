@@ -1,6 +1,6 @@
-require("src/env.js");
-const log = require("src/log.js")("runFeeder");
-const ethereumConnection = require("src/ethereumConnection.js");
+require("src/augmintjs/helpers/env.js");
+const log = require("src/augmintjs/helpers/log.js")("runFeeder");
+const ethereumConnection = require("src/augmintjs/ethereumConnection.js");
 const RatesFeeder = require("src/RatesFeeder.js");
 const subscribeTickers = require("src/subscribeTickers.js");
 const statusApi = require("src/statusApi/server.js");

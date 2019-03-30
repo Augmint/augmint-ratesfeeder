@@ -15,11 +15,11 @@ TODO:
         web3.eth.transactionPollingTimeout: ${web3.eth.transactionPollingTimeout}
 */
 
-require("src/env.js");
-const log = require("src/log.js")("ratesFeeder");
-const setExitHandler = require("src/helpers/sigintHandler.js");
-const contractsHelper = require("src/helpers/contractsHelper.js");
-const promiseTimeout = require("src/helpers/promiseTimeout.js");
+require("src/augmintjs/helpers/env.js");
+const log = require("src/augmintjs/helpers/log.js")("ratesFeeder");
+const setExitHandler = require("src/augmintjs/helpers/sigintHandler.js");
+const contractsHelper = require("src/augmintjs/contractConnection.js");
+const promiseTimeout = require("src/augmintjs/helpers/promiseTimeout.js");
 const TokenAEur = require("src/abiniser/abis/TokenAEur_ABI_2ea91d34a7bfefc8f38ef0e8a5ae24a5.json");
 const Rates = require("src/abiniser/abis/Rates_ABI_73a17ebb0acc71773371c6a8e1c8e6ce.json");
 

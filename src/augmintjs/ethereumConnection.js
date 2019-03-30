@@ -1,6 +1,6 @@
-require("src/env.js");
-const log = require("src/log.js")("runFeeder");
-const setExitHandler = require("src/helpers/sigintHandler.js");
+require("src/augmintjs/helpers/env.js");
+const log = require("src/augmintjs/helpers/log.js")("runFeeder");
+const setExitHandler = require("src/augmintjs/helpers/sigintHandler.js");
 const Web3 = require("web3");
 
 module.exports = {

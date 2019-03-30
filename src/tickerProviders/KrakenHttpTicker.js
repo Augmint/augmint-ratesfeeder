@@ -4,7 +4,7 @@
  NB: Kraken's websocket has vwap, that could be used instead of http polling
 */
 
-const log = require("src/log.js")("TickerProvider");
+const log = require("src/augmintjs/helpers/log.js")("TickerProvider");
 const BaseHttpTickerProvider = require("./BaseHttpTickerProvider.js");
 
 class KrakenHttpTicker extends BaseHttpTickerProvider {

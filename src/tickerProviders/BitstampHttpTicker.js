@@ -3,7 +3,7 @@
  additional we include lastPrice
 */
 
-//const log = require("src/log.js")("TickerProvider");
+//const log = require("src/augmintjs/helpers/log.js")("TickerProvider");
 const BaseHttpTickerProvider = require("./BaseHttpTickerProvider.js");
 
 class BitstampHttpTicker extends BaseHttpTickerProvider {
