@@ -1,5 +1,6 @@
 require("src/env.js");
 const log = require("src/log.js")("runFeeder");
+const setExitHandler = require("src/helpers/sigintHandler.js");
 const Web3 = require("web3");
 
 module.exports = {
@@ -9,6 +10,8 @@ module.exports = {
 };
 
 let web3;
+
+setExitHandler(_exit, "ethereumConnection");
 
 log.info(
     // IMPORTANT: NEVER expose keys even not in logs!
@@ -45,4 +48,13 @@ if (typeof web3.currentProvider.sendAsync !== "function") {
     web3.currentProvider.sendAsync = function() {
         return web3.currentProvider.send.apply(web3.currentProvider, arguments);
     }.bind(this);
+}
+
+function stop() {
+    web3.currentProvider.connection.close();
+}
+
+function _exit(signal) {
+    log.info(`*** EthereumConnection received ${signal}. Stopping.`);
+    stop();
 }
