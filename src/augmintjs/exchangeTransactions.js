@@ -138,7 +138,7 @@ class Exchange {
     }
 
     async getOrders(orderDirection, offset) {
-        const blockGasLimit = (await web3.eth.getBlock("latest")).gasLimit;
+        const blockGasLimit = this.ethereumConnection.safeGasLimit;
 
         const isLegacyExchangeContract = typeof this.instance.methods.CHUNK_SIZE === "function";
         const chunkSize = isLegacyExchangeContract ? constants.LEGACY_CONTRACTS_CHUNK_SIZE : constants.CHUNK_SIZE;
