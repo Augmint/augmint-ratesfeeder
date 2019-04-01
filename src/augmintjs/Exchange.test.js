@@ -1,6 +1,23 @@
-const expect = require("chai").expect;
-const exchange = new (require("./Exchange.js"))();
+const { expect, assert } = require("chai");
+const EthereumConnection = require("./EthereumConnection.js");
+const ethereumConnection = new EthereumConnection();
+const Exchange = require("./Exchange.js");
+const exchange = new Exchange();
 const { constants } = require("./constants.js");
+
+describe("connection", () => {
+    it("should connect to latest contract", async () => {
+        await ethereumConnection.connect();
+
+        assert.isNull(exchange.address);
+        await exchange.connect(ethereumConnection);
+        assert.equal(exchange.address, "0xFAceA53a04bEfCC6C9246eb3951814cfEE2A1415");
+        assert.equal(exchange.ratesInstance._address, "0xb0a2a8e846b66C7384F52635CECEf5280F766C8B");
+        // TODO when rates is a class: assert.equal(exchange.rates.address, "0xEE8C7a3e99945A5207Dca026504d67527125Da9C");
+    });
+
+    it("should connect to legacy Excahnge contract");
+});
 
 describe("fetchOrderBook", () => {
     it("should return empty orderbook when no orders");
