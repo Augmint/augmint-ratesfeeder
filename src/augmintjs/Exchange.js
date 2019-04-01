@@ -53,11 +53,13 @@ const contractsHelper = require("src/augmintjs/contractConnection.js");
 const Contract = require("src/augmintjs/Contract.js");
 const ExchangeArtifact = require("src/augmintjs/abiniser/abis/Exchange_ABI_d3e7f8a261b756f9c40da097608b21cd.json");
 const RatesArtifact = require("src/augmintjs/abiniser/abis/Rates_ABI_73a17ebb0acc71773371c6a8e1c8e6ce.json");
+const AugmintTokenArtifact = require("src/augmintjs/abiniser/abis/TokenAEur_ABI_2ea91d34a7bfefc8f38ef0e8a5ae24a5.json");
 
 class Exchange extends Contract {
     constructor() {
         super();
         this.ratesInstance = null;
+        this.tokenInstance = null;
     }
 
     async connect(ethereumConnection, exchangeAddress) {
@@ -68,10 +70,22 @@ class Exchange extends Contract {
         );
 
         this.ratesInstance = contractsHelper.connectLatest(this.ethereumConnection, RatesArtifact);
-        const ratesAddressAtExchange = await this.instance.methods.rates().call();
+        this.tokenInstance = contractsHelper.connectLatest(this.ethereumConnection, AugmintTokenArtifact);
+
+        const [tokenAddressAtExchange, ratesAddressAtExchange] = await Promise.all([
+            this.instance.methods.augmintToken().call(),
+            this.instance.methods.rates().call()
+        ]);
+
         if (ratesAddressAtExchange !== this.ratesInstance._address) {
             throw new Error(
                 " Exchange: latest Rates contract deployment address with provided ABI doesn't match rates contract address at deployed Exchange contract's"
+            );
+        }
+
+        if (tokenAddressAtExchange !== this.tokenInstance._address) {
+            throw new Error(
+                " Exchange: latest AugmintToken contract deployment address with provided ABI doesn't match AugmintToken contract address at deployed Exchange contract's"
             );
         }
 
