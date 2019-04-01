@@ -1,6 +1,9 @@
 /**********************************************************************************
-    async getMatchingOrders(web3, exchangeInstance, bn_ethFiatRate, gasLimit)
+Exchange contract class
 
+
+Methods:
+    async getMatchingOrders(web3, exchangeInstance, bn_ethFiatRate, gasLimit)
         Fetches current OrderBook and returns as many matching orderIds as fits into the provided gas limit.
         The returned orderids can be passed to matchMultipleOrdersTx
 
@@ -16,7 +19,6 @@
                 { buyIds: [], sellIds: [], gasEstimate }
 
     async fetchOrderBook(web3, exchangeInstance)
-
         Fetches, parses and orders the current, full orderBook from Exchange
 
         Input:
@@ -29,7 +31,6 @@
             }
 
     matchMultipleOrdersTx(exchangeInstance, buyIds, sellIds)
-
         Returns a web3 transaction to match the passed buyIds and sellIds. Call .send() on the returned tx.
 
         Input:
@@ -49,41 +50,28 @@ const BigNumber = require("bignumber.js");
 const { cost } = require("./gas.js");
 const { constants } = require("./constants.js");
 const contractsHelper = require("src/augmintjs/contractConnection.js");
+const Contract = require("src/augmintjs/Contract.js");
 const ExchangeArtifact = require("src/augmintjs/abiniser/abis/Exchange_ABI_d3e7f8a261b756f9c40da097608b21cd.json");
 const RatesArtifact = require("src/augmintjs/abiniser/abis/Rates_ABI_73a17ebb0acc71773371c6a8e1c8e6ce.json");
 
-class Exchange {
+class Exchange extends Contract {
     constructor() {
-        this.ethereumConnection = null;
-        this.web3 = null;
+        super();
         this.ratesInstance = null;
-        this.instance = null;
-    }
-
-    get address() {
-        return this.instance ? this.instance._address : null;
     }
 
     async connect(ethereumConnection, exchangeAddress) {
-        if (exchangeAddress) {
-            throw new Error(
-                "Exchange: Connecting to an exchange contract at arbitary address is not supported yet. pass no address to connect latest exchange deployment"
-            );
-        }
-        if (!ethereumConnection.isConnected) {
-            throw new Error(
-                "Exchange: not connected to web3 at passed ethereumConnection. call ethereumConnection.connect first"
-            );
-        }
-        this.ethereumConnection = ethereumConnection;
-        this.web3 = this.ethereumConnection.web3;
+        super.connect(
+            ethereumConnection,
+            ExchangeArtifact,
+            exchangeAddress
+        );
 
-        this.instance = contractsHelper.connectLatest(this.ethereumConnection, ExchangeArtifact);
         this.ratesInstance = contractsHelper.connectLatest(this.ethereumConnection, RatesArtifact);
         const ratesAddressAtExchange = await this.instance.methods.rates().call();
         if (ratesAddressAtExchange !== this.ratesInstance._address) {
             throw new Error(
-                " Exchange: latest Rates contract deployment address with with provided ABI doesn't match with exhange contract's rates contract address property value"
+                " Exchange: latest Rates contract deployment address with provided ABI doesn't match rates contract address at deployed Exchange contract's"
             );
         }
 
