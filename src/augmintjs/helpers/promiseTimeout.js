@@ -8,8 +8,13 @@ function promiseTimeout(ms, promise) {
         }, ms);
     });
 
-    return Promise.race([promise, timeout]).then(result => {
-        clearTimeout(id);
-        return result;
-    });
+    return Promise.race([promise, timeout])
+        .then(result => {
+            clearTimeout(id);
+            return result;
+        })
+        .catch(error => {
+            clearTimeout(id);
+            throw error;
+        });
 }
