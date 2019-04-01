@@ -22,9 +22,9 @@ const contractsHelper = require("src/augmintjs/contractConnection.js");
 const promiseTimeout = require("src/augmintjs/helpers/promiseTimeout.js");
 const TokenAEur = require("src/abiniser/abis/TokenAEur_ABI_2ea91d34a7bfefc8f38ef0e8a5ae24a5.json");
 const Rates = require("src/abiniser/abis/Rates_ABI_73a17ebb0acc71773371c6a8e1c8e6ce.json");
+const { cost } = require("src/augmintjs/gas.js");
 
 const CCY = "EUR"; // only EUR is suported by TickerProvider providers ATM
-const SET_RATE_GAS_LIMIT = 80000;
 
 const median = values => {
     values.sort((a, b) => a - b);
@@ -41,14 +41,15 @@ const median = values => {
 };
 
 class RatesFeeder {
-    constructor(web3, tickers) {
+    constructor(ethereumConnection, tickers) {
         this.tickers = tickers; // array of TickerProvider objects
         // list of tickernames:
         this.tickerNames = this.tickers.reduce(
             (accum, ticker, idx) => (idx == 0 ? ticker.name : accum + ", " + ticker.name),
             ""
         );
-        this.web3 = web3;
+        this.ethereumConnection = ethereumConnection;
+        this.web3 = ethereumConnection.web3;
         this.isInitialised = false;
         this.isStopping = false;
         this.decimalsDiv = null;
@@ -215,7 +216,7 @@ class RatesFeeder {
             const txToSign = {
                 from: this.account,
                 to: this.augmintRatesInstance._address,
-                gas: SET_RATE_GAS_LIMIT,
+                gas: cost.SET_RATE_GAS_LIMIT,
                 data: encodedABI
             };
 

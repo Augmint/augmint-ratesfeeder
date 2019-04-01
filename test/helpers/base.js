@@ -1,14 +1,24 @@
 /* Generic test helper functions */
+const EthereumConnection = require("src/augmintjs/EthereumConnection.js");
 const RatesFeeder = require("src/RatesFeeder.js");
-const { web3 } = require("src/augmintjs/ethereumConnection.js");
-const ratesFeeder = new RatesFeeder(web3, []);
+const ethereumConnection = new EthereumConnection();
+let ratesFeeder = null;
+
 const assert = require("chai").assert;
 
 module.exports = {
     get web3() {
-        return ratesFeeder.web3;
+        return ethereumConnection.web3;
     },
     ratesFeeder: async function() {
+        if (!ethereumConnection.isConnected) {
+            await ethereumConnection.connect();
+        }
+
+        if (!ratesFeeder) {
+            ratesFeeder = new RatesFeeder(ethereumConnection, []);
+        }
+
         if (!ratesFeeder.isInitialised) {
             await ratesFeeder.init();
         }

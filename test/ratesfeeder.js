@@ -221,4 +221,6 @@ describe("RatesFeeder: real exchange rate tests", () => {
 
         assert.equal(storedRate.rate, Math.round(price * ratesFeeder.decimalsDiv));
     });
+
+    it("should recover after web3 connection lost");
 });
