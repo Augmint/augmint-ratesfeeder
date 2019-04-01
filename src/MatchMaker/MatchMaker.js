@@ -45,9 +45,6 @@ class MatchMaker extends EventEmitter {
         }
         this.web3.eth.defaultAccount = this.account;
 
-        this.exchange = new Exchange();
-        this.exchangeInstance = await this.exchange.connect(this.ethereumConnection);
-
         if (this.ethereumConnection.isConnected) {
             await this.onEthereumConnected(); // connect event might be already triggered so we need to call it on init
         }
@@ -79,6 +76,11 @@ class MatchMaker extends EventEmitter {
     }
 
     async onEthereumConnected() {
+        if (!this.exchange) {
+            this.exchange = new Exchange();
+            this.exchangeInstance = await this.exchange.connect(this.ethereumConnection);
+        }
+
         // subscribing on first connection OR resubscribing in case of reconnection - check if latter is needed in newer web3 releases: https://github.com/ethereum/web3.js/pull/1966
         await this._subscribe();
 
