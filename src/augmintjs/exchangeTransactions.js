@@ -199,12 +199,12 @@ class Exchange {
         return o1.price * dir > o2.price * dir || (o1.price === o2.price && o1.id > o2.id) ? 1 : -1;
     }
 
-    async matchMultipleOrdersTx(exchangeInstance, buyIds, sellIds) {
+    async matchMultipleOrdersTx(buyIds, sellIds) {
         if (sellIds.length === 0 || sellIds.length !== buyIds.length) {
             throw new Error("invalid buyIds/sellIds recevied - no ids or the the params are not equal.");
         }
 
-        const tx = exchangeInstance.methods.matchMultipleOrders(buyIds, sellIds);
+        const tx = this.instance.methods.matchMultipleOrders(buyIds, sellIds);
 
         return tx;
     }

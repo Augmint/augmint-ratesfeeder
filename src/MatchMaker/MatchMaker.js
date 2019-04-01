@@ -106,21 +106,18 @@ class MatchMaker extends EventEmitter {
 
     async _checkAndMatchOrders() {
         const bn_ethFiatRate = new BigNumber(
-            (await this.exchangeInstance.ratesInstance.methods
+            (await this.exchange.ratesInstance.methods
                 .convertFromWei(this.web3.utils.asciiToHex(CCY), constants.ONE_ETH_IN_WEI.toString())
                 .call()) / constants.DECIMALS_DIV
         );
 
-        const matchingOrders = await this.exchangeInstance.getMatchingOrders(
-            this.web3,
-            this.exchangeInstance,
+        const matchingOrders = await this.exchange.getMatchingOrders(
             bn_ethFiatRate,
             this.ethereumConnection.safeBlockGasLimit
         );
 
         if (matchingOrders.buyIds.length > 0) {
-            const matchMultipleOrdersTx = await this.exchangeInstance.matchMultipleOrdersTx(
-                this.exchangeInstance,
+            const matchMultipleOrdersTx = await this.exchange.matchMultipleOrdersTx(
                 matchingOrders.buyIds,
                 matchingOrders.sellIds
             );
