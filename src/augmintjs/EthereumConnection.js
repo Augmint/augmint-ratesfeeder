@@ -46,6 +46,7 @@ class EthereumConnection extends EventEmitter {
 
         this.reconnectTimer = null;
 
+        this.networkId = null;
         this.blockGasLimit = null;
 
         setExitHandler(this._exit.bind(this), "ethereumConnection");
@@ -115,6 +116,7 @@ class EthereumConnection extends EventEmitter {
             this.isTryingToReconnect = false;
             log.warn(" EthereumConnection - provider connection recovered");
         } else {
+            this.networkId = parseInt(await this.web3.eth.net.getId(), 10);
             this.blockGasLimit = (await this.web3.eth.getBlock("latest")).gasLimit;
             this.safeBlockGasLimit = Math.round(this.blockGasLimit * 0.9);
 
