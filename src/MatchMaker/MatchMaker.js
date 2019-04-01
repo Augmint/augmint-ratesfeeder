@@ -64,7 +64,7 @@ class MatchMaker extends EventEmitter {
             MATCHMAKER_ETHEREUM_PRIVATE_KEY: ${
     process.env.MATCHMAKER_ETHEREUM_PRIVATE_KEY ? "[secret]" : "not provided"
 }
-            Exchange contract: ${this.exchangeInstance._address}`
+            Exchange contract: ${this.exchange.address}`
         );
     }
 
@@ -129,7 +129,7 @@ class MatchMaker extends EventEmitter {
 
             const txToSign = {
                 from: this.account,
-                to: this.exchangeInstance._address,
+                to: this.exchange.address,
                 gasLimit: matchingOrders.gasEstimate,
                 data: encodedABI
             };

@@ -60,6 +60,10 @@ class Exchange {
         this.instance = null;
     }
 
+    get address() {
+        return this.instance ? this.instance._address : null;
+    }
+
     async connect(ethereumConnection, exchangeAddress) {
         if (exchangeAddress) {
             throw new Error(
