@@ -11,7 +11,7 @@ const BigNumber = require("bignumber.js");
 const promiseTimeout = require("src/augmintjs/helpers/promiseTimeout.js");
 const { constants } = require("src/augmintjs/constants.js");
 const setExitHandler = require("src/augmintjs/helpers/sigintHandler.js");
-const Exchange = require("src/augmintjs/exchangeTransactions.js");
+const Exchange = require("src/augmintjs/Exchange.js");
 
 const CCY = "EUR"; // only EUR is suported by MatchMaker ATM
 

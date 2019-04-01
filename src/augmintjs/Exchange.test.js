@@ -1,5 +1,5 @@
 const expect = require("chai").expect;
-const exchange = new (require("./exchangeTransactions"))();
+const exchange = new (require("./Exchange.js"))();
 const { constants } = require("./constants.js");
 
 describe("fetchOrderBook", () => {
