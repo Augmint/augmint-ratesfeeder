@@ -14,8 +14,8 @@ const setExitHandler = require("src/augmintjs/helpers/sigintHandler.js");
 const contractsHelper = require("src/augmintjs/contractConnection.js");
 const exchangeTransactions = require("src/augmintjs/exchangeTransactions.js");
 
-const Exchange = require("src/abiniser/abis/Exchange_ABI_d3e7f8a261b756f9c40da097608b21cd.json");
-const Rates = require("src/abiniser/abis/Rates_ABI_73a17ebb0acc71773371c6a8e1c8e6ce.json");
+const Exchange = require("src/augmintjs/abiniser/abis/Exchange_ABI_d3e7f8a261b756f9c40da097608b21cd.json");
+const Rates = require("src/augmintjs/abiniser/abis/Rates_ABI_73a17ebb0acc71773371c6a8e1c8e6ce.json");
 
 const CCY = "EUR"; // only EUR is suported by MatchMaker ATM
 
