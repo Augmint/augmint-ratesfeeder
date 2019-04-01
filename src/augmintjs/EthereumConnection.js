@@ -149,12 +149,11 @@ class EthereumConnection extends EventEmitter {
 
         const disconnectedEventPromise = new Promise(resolve => {
             this.once("disconnected", () => {
-                resolve(); // we wait for our custom setup to finish before we resolve connect()
+                resolve();
             });
         });
 
-        const ret = promiseTimeout(CONNECTION_CLOSE_TIMEOUT, disconnectedEventPromise);
-        return ret;
+        await promiseTimeout(CONNECTION_CLOSE_TIMEOUT, disconnectedEventPromise);
     }
 
     async _exit(signal) {
