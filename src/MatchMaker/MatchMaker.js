@@ -7,24 +7,40 @@ emmitted events:
 require("src/augmintjs/helpers/env.js");
 const log = require("src/augmintjs/helpers/log.js")("MatchMaker");
 const EventEmitter = require("events");
+const BigNumber = require("bignumber.js");
+const promiseTimeout = require("src/augmintjs/helpers/promiseTimeout.js");
+const { constants } = require("src/augmintjs/constants.js");
 const setExitHandler = require("src/augmintjs/helpers/sigintHandler.js");
 const contractsHelper = require("src/augmintjs/contractConnection.js");
+const exchangeTransactions = require("src/augmintjs/exchangeTransactions.js");
 
 const Exchange = require("src/abiniser/abis/Exchange_ABI_d3e7f8a261b756f9c40da097608b21cd.json");
+const Rates = require("src/abiniser/abis/Rates_ABI_73a17ebb0acc71773371c6a8e1c8e6ce.json");
+
+const CCY = "EUR"; // only EUR is suported by MatchMaker ATM
 
 class MatchMaker extends EventEmitter {
-    constructor(web3) {
+    constructor(ethereumConnection) {
         super();
-        this.web3 = web3;
+        this.ethereumConnection = ethereumConnection;
+        this.web3 = this.ethereumConnection.web3;
         this.isInitialised = false;
-        this.isConnected = false;
+
+        // flag if processing is going on to avoid sending a
+        // new matchmultiple while the previous  is still running
+        this.isProcessingOrderBook = false;
+
+        // flag if a newOrder lands while still processing a previous one
+        // if processing done we will trigger a new checkAndMatch based on this
+        this.queueNextCheck = false;
+
         this.newOrderEventSubscription = null;
         this.exchangeInstance = null;
         this.account = null;
     }
 
     async init() {
-        setExitHandler(this._exit.bind(this), "RatesFeeder");
+        setExitHandler(this._exit.bind(this), "MatchMaker");
 
         this.account = process.env.MATCHMAKER_ETHEREUM_ACCOUNT;
 
@@ -34,10 +50,16 @@ class MatchMaker extends EventEmitter {
         this.web3.eth.defaultAccount = this.account;
 
         this.exchangeInstance = await contractsHelper.connectLatest(this.web3, Exchange);
-        //this.newOrderEventSubscription = this.exchangeInstance.events.NewOrder().on("data", this.onNewOrder.bind(this));
+        this.ratesInstance = await contractsHelper.connectLatest(this.web3, Rates);
+
+        if (this.ethereumConnection.isConnected) {
+            await this.onEthereumConnected(); // connect event might be already triggered so we need to call it on init
+        }
+
+        this.ethereumConnection.on("connected", this.onEthereumConnected.bind(this));
+        this.ethereumConnection.on("connectionLost", this.onEthereumConnectionLost.bind(this));
 
         this.isInitialised = true;
-        this.isConnected = true;
 
         log.info(
             // IMPORTANT: NEVER expose keys even not in logs!
@@ -50,17 +72,164 @@ class MatchMaker extends EventEmitter {
         );
     }
 
-    onNewOrder(event) {
-        log.debug("New order id:", event.returnValues.orderId);
+    async onNewOrder(event) {
+        this.checkAndMatchOrders();
+
         this.emit("NewOrder", event, this);
     }
 
-    async stop() {
-        if (this.newOrderEventSubscription) {
-            await this.newOrderEventSubscription.unsubscribe();
+    async onOrderFill(event) {
+        this.emit("OrderFill", event, this);
+    }
+
+    async onEthereumConnected() {
+        // subscribing on first connection OR resubscribing in case of reconnection - check if latter is needed in newer web3 releases: https://github.com/ethereum/web3.js/pull/1966
+        await this._subscribe();
+
+        this.checkAndMatchOrders();
+    }
+
+    async onEthereumConnectionLost() {
+        this._unsubscribe();
+    }
+
+    async checkAndMatchOrders() {
+        if (this.isProcessingOrderBook) {
+            this.queueNextCheck = true; // so _checkAndMatchOrders will call this fx again once finished
+        } else {
+            this.isProcessingOrderBook = true;
+            await promiseTimeout(process.env.MATCHMAKER_CHECKANDMATCHORDERS_TIMEOUT, this._checkAndMatchOrders()).catch(
+                error => {
+                    // NB: it's not necessarily an error, ethereum network might be just slow.
+                    log.error("checkAndMatchOrders failed with Error: ", error);
+                }
+            );
+            this.isProcessingOrderBook = false;
         }
-        this.isConnected = false;
-        log.info("MatchMaker stopped.");
+    }
+
+    async _checkAndMatchOrders() {
+        const bn_ethFiatRate = new BigNumber(
+            (await this.ratesInstance.methods
+                .convertFromWei(this.web3.utils.asciiToHex(CCY), constants.ONE_ETH_IN_WEI.toString())
+                .call()) / constants.DECIMALS_DIV
+        );
+
+        const matchingOrders = await exchangeTransactions.getMatchingOrders(
+            this.web3,
+            this.exchangeInstance,
+            bn_ethFiatRate,
+            this.ethereumConnection.safeBlockGasLimit
+        );
+
+        if (matchingOrders.buyIds.length > 0) {
+            const matchMultipleOrdersTx = await exchangeTransactions.matchMultipleOrdersTx(
+                this.exchangeInstance,
+                matchingOrders.buyIds,
+                matchingOrders.sellIds
+            );
+
+            const encodedABI = matchMultipleOrdersTx.encodeABI();
+
+            const txToSign = {
+                from: this.account,
+                to: this.exchangeInstance._address,
+                gasLimit: matchingOrders.gasEstimate,
+                data: encodedABI
+            };
+
+            console.log(txToSign);
+
+            const [signedTx, nonce] = await Promise.all([
+                this.web3.eth.accounts.signTransaction(txToSign, process.env.MATCHMAKER_ETHEREUM_PRIVATE_KEY),
+                this.web3.eth.getTransactionCount(this.account)
+            ]);
+
+            log.log(
+                `==> checkAndMatchOrders() sending matchMultipleOrdersTx. matching Orders: ${
+                    matchingOrders.sellIds.length
+                } nonce: ${nonce} gas: ${matchingOrders.gasEstimate} gasPrice: ${this.web3.utils.fromWei(
+                    await this.web3.eth.getGasPrice()
+                )} account: ${this.account}`
+            );
+
+            const tx = this.web3.eth.sendSignedTransaction(signedTx.rawTransaction, { from: this.account });
+
+            const receipt = await tx
+                .once("transactionHash", hash => {
+                    log.debug(`    checkAndMatchOrders() nonce: ${nonce}  txHash: ${hash} hash received`);
+                })
+                .once("receipt", receipt => {
+                    log.debug(
+                        `    checkAndMatchOrders() nonce: ${nonce}  txHash: ${
+                            receipt.transactionHash
+                        } receipt received.  gasUsed: ${receipt.gasUsed}`
+                    );
+                })
+                .on("confirmation", (confirmationNumber, receipt) => {
+                    if (
+                        confirmationNumber === parseInt(process.env.LOG_AS_SUCCESS_AFTER_N_CONFIRMATION) &&
+                        receipt.status // for failed tx confirmations we just emit confirmation event, tx will trigger error
+                    ) {
+                        this.emit("txSuccess", nonce, confirmationNumber, receipt, this);
+                    } else {
+                        this.emit("txConfirmation", nonce, confirmationNumber, receipt, this);
+                        log.debug(
+                            `    checkAndMatchOrders() nonce: ${nonce}  txHash: ${
+                                receipt.transactionHash
+                            } Confirmation #${confirmationNumber} received.`
+                        );
+                    }
+                })
+                .on("error", error => {
+                    this.emit("txError", nonce, null, this); // web3 doesn't seem to provide receipt here ATM...
+                    throw new Error("checkAndMatchOrders Error sending tx with nonce: " + nonce + " Error:\n" + error);
+                    //log.error("checkAndMatchOrders Error sending tx with nonce: " + nonce + " Error:\n" + error);
+                })
+                .then(async receipt => {
+                    // TODO: check with latest web3, it might be a duplicate logging as confirmation after  transactionConfirmationBlocks is the same
+                    log.debug(`    checkAndMatchOrders() nonce: ${nonce}  txHash: ${receipt.transactionHash} mined.`);
+                    return receipt;
+                });
+
+            if (!receipt.status) {
+                this.emit("txError", nonce, receipt, this);
+                log.error(`checkAndMatchOrders() ERROR. tx failed, returned status: ${
+                    receipt.status
+                } nonce: ${nonce} receipt:
+                       ${JSON.stringify(receipt, 3, null)}`);
+            }
+
+            if (this.queueNextCheck) {
+                this.isProcessingOrderBook = false; // we set it here just in case this call resolves later then the checkAndMatch call below run
+                this.queueNextCheck = false;
+                this.checkAndMatchOrders();
+            }
+        }
+    }
+
+    async stop() {
+        this.emit("stopping", this);
+
+        await this._unsubscribe();
+
+        this.emit("stopped", this);
+    }
+
+    async _subscribe() {
+        this.newOrderEventSubscription = this.exchangeInstance.events.NewOrder().on("data", this.onNewOrder.bind(this));
+        this.orderFillEventSubscription = this.exchangeInstance.events
+            .OrderFill()
+            .on("data", this.onOrderFill.bind(this));
+    }
+
+    async _unsubscribe() {
+        if (this.newOrderEventSubscription) {
+            await Promise.all([
+                this.newOrderEventSubscription.unsubscribe(),
+                this.orderFillEventSubscription.unsubscribe()
+            ]);
+        }
     }
 
     async _exit(signal) {
