@@ -74,8 +74,8 @@ class RatesFeeder {
         this.web3.eth.defaultAccount = this.account;
 
         [this.augmintRatesInstance, this.augmintTokenInstance] = await Promise.all([
-            contractsHelper.connectLatest(this.web3, Rates),
-            contractsHelper.connectLatest(this.web3, TokenAEur)
+            contractsHelper.connectLatest(this.ethereumConnection, Rates),
+            contractsHelper.connectLatest(this.ethereumConnection, TokenAEur)
         ]);
 
         this.decimals = await this.augmintTokenInstance.methods.decimals().call();

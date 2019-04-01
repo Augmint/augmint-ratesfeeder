@@ -1,5 +1,5 @@
 const expect = require("chai").expect;
-const { calculateMatchingOrders } = require("./exchangeTransactions");
+const exchange = new (require("./exchangeTransactions"))();
 const BigNumber = require("bignumber.js");
 const { cost } = require("./gas.js");
 
@@ -13,7 +13,7 @@ describe("getMatchingOrders", () => {
     const GAS_LIMIT = Number.MAX_SAFE_INTEGER;
 
     it("should return no match if no orders", () => {
-        const matches = calculateMatchingOrders([], [], ETHEUR_RATE, GAS_LIMIT);
+        const matches = exchange.calculateMatchingOrders([], [], ETHEUR_RATE, GAS_LIMIT);
         expect(matches.buyIds).to.have.lengthOf(0);
         expect(matches.sellIds).to.have.lengthOf(0);
         expect(matches.gasEstimate).to.be.equal(0);
@@ -30,7 +30,7 @@ describe("getMatchingOrders", () => {
             { id: 5, price: 1.01, amount: 10 } //
         ];
 
-        const matches = calculateMatchingOrders(buyOrders, sellOrders, ETHEUR_RATE, GAS_LIMIT);
+        const matches = exchange.calculateMatchingOrders(buyOrders, sellOrders, ETHEUR_RATE, GAS_LIMIT);
 
         expect(matches.buyIds).to.have.lengthOf(0);
         expect(matches.sellIds).to.have.lengthOf(0);
@@ -48,7 +48,7 @@ describe("getMatchingOrders", () => {
             { id: 5, price: 1.05, amount: 10 } //
         ];
 
-        const matches = calculateMatchingOrders(buyOrders, sellOrders, ETHEUR_RATE, GAS_LIMIT);
+        const matches = exchange.calculateMatchingOrders(buyOrders, sellOrders, ETHEUR_RATE, GAS_LIMIT);
 
         expect(matches.buyIds).to.deep.equal([2]);
         expect(matches.sellIds).to.deep.equal([4]);
@@ -67,7 +67,7 @@ describe("getMatchingOrders", () => {
             { id: 6, price: 1.04, amount: 10 } // no fill...
         ];
 
-        const matches = calculateMatchingOrders(buyOrders, sellOrders, ETHEUR_RATE, GAS_LIMIT);
+        const matches = exchange.calculateMatchingOrders(buyOrders, sellOrders, ETHEUR_RATE, GAS_LIMIT);
 
         expect(matches.buyIds).to.deep.equal([2, 2]);
         expect(matches.sellIds).to.deep.equal([4, 5]);
@@ -90,7 +90,7 @@ describe("getMatchingOrders", () => {
             { id: 6, price: 1.08, amount: 10 } // no matching because no more left in matching buy orders..
         ];
 
-        const matches = calculateMatchingOrders(buyOrders, sellOrders, ETHEUR_RATE, GAS_LIMIT);
+        const matches = exchange.calculateMatchingOrders(buyOrders, sellOrders, ETHEUR_RATE, GAS_LIMIT);
 
         expect(matches.buyIds).to.deep.equal([11, 3, 3]);
         expect(matches.sellIds).to.deep.equal([9, 4, 2]);
@@ -114,7 +114,7 @@ describe("getMatchingOrders", () => {
 
         const gasLimit = cost.MATCH_MULTIPLE_FIRST_MATCH_GAS + cost.MATCH_MULTIPLE_ADDITIONAL_MATCH_GAS;
 
-        const matches = calculateMatchingOrders(buyOrders, sellOrders, ETHEUR_RATE, gasLimit);
+        const matches = exchange.calculateMatchingOrders(buyOrders, sellOrders, ETHEUR_RATE, gasLimit);
 
         expect(matches.buyIds).to.deep.equal([1, 2]);
         expect(matches.sellIds).to.deep.equal([5, 6]);
@@ -136,7 +136,7 @@ describe("getMatchingOrders", () => {
 
         const gasLimit = cost.MATCH_MULTIPLE_FIRST_MATCH_GAS + 2 * cost.MATCH_MULTIPLE_ADDITIONAL_MATCH_GAS - 1;
 
-        const matches = calculateMatchingOrders(buyOrders, sellOrders, ETHEUR_RATE, gasLimit);
+        const matches = exchange.calculateMatchingOrders(buyOrders, sellOrders, ETHEUR_RATE, gasLimit);
 
         expect(matches.buyIds).to.deep.equal([1, 2]);
         expect(matches.sellIds).to.deep.equal([5, 6]);

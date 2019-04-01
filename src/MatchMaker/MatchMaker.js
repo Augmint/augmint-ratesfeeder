@@ -11,11 +11,7 @@ const BigNumber = require("bignumber.js");
 const promiseTimeout = require("src/augmintjs/helpers/promiseTimeout.js");
 const { constants } = require("src/augmintjs/constants.js");
 const setExitHandler = require("src/augmintjs/helpers/sigintHandler.js");
-const contractsHelper = require("src/augmintjs/contractConnection.js");
-const exchangeTransactions = require("src/augmintjs/exchangeTransactions.js");
-
-const Exchange = require("src/augmintjs/abiniser/abis/Exchange_ABI_d3e7f8a261b756f9c40da097608b21cd.json");
-const Rates = require("src/augmintjs/abiniser/abis/Rates_ABI_73a17ebb0acc71773371c6a8e1c8e6ce.json");
+const Exchange = require("src/augmintjs/exchangeTransactions.js");
 
 const CCY = "EUR"; // only EUR is suported by MatchMaker ATM
 
@@ -49,8 +45,8 @@ class MatchMaker extends EventEmitter {
         }
         this.web3.eth.defaultAccount = this.account;
 
-        this.exchangeInstance = await contractsHelper.connectLatest(this.web3, Exchange);
-        this.ratesInstance = await contractsHelper.connectLatest(this.web3, Rates);
+        this.exchange = new Exchange();
+        this.exchangeInstance = await this.exchange.connect(this.ethereumConnection);
 
         if (this.ethereumConnection.isConnected) {
             await this.onEthereumConnected(); // connect event might be already triggered so we need to call it on init
@@ -110,12 +106,12 @@ class MatchMaker extends EventEmitter {
 
     async _checkAndMatchOrders() {
         const bn_ethFiatRate = new BigNumber(
-            (await this.ratesInstance.methods
+            (await this.exchangeInstance.ratesInstance.methods
                 .convertFromWei(this.web3.utils.asciiToHex(CCY), constants.ONE_ETH_IN_WEI.toString())
                 .call()) / constants.DECIMALS_DIV
         );
 
-        const matchingOrders = await exchangeTransactions.getMatchingOrders(
+        const matchingOrders = await this.exchangeInstance.getMatchingOrders(
             this.web3,
             this.exchangeInstance,
             bn_ethFiatRate,
@@ -123,7 +119,7 @@ class MatchMaker extends EventEmitter {
         );
 
         if (matchingOrders.buyIds.length > 0) {
-            const matchMultipleOrdersTx = await exchangeTransactions.matchMultipleOrdersTx(
+            const matchMultipleOrdersTx = await this.exchangeInstance.matchMultipleOrdersTx(
                 this.exchangeInstance,
                 matchingOrders.buyIds,
                 matchingOrders.sellIds
