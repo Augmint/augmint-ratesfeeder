@@ -32,6 +32,7 @@ const setExitHandler = require("src/augmintjs/helpers/sigintHandler.js");
 const Web3 = require("web3");
 const RECONNECT_INTERVAL = 5000;
 const CONNECTION_TIMEOUT = 5000;
+const CONNECTION_CLOSE_TIMEOUT = 10000;
 
 class EthereumConnection extends EventEmitter {
     constructor() {
@@ -143,6 +144,15 @@ class EthereumConnection extends EventEmitter {
         if (this.web3 && this.isConnected) {
             await this.web3.currentProvider.connection.close();
         }
+
+        const disconnectedEventPromise = new Promise(resolve => {
+            this.once("disconnected", () => {
+                resolve(); // we wait for our custom setup to finish before we resolve connect()
+            });
+        });
+
+        const ret = promiseTimeout(CONNECTION_CLOSE_TIMEOUT, disconnectedEventPromise);
+        return ret;
     }
 
     async _exit(signal) {
