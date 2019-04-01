@@ -50,6 +50,7 @@ class RatesFeeder {
         );
         this.web3 = web3;
         this.isInitialised = false;
+        this.isStopping = false;
         this.decimalsDiv = null;
         this.decimals = null;
         this.augmintRatesInstance = null;
@@ -57,10 +58,12 @@ class RatesFeeder {
         this.checkTickerPriceTimer = null;
         this.account = null;
         this.lastTickerCheckResult = {};
+        this.checkTickerPriceError = null; // to store last error and supress loggin repeating errors
+        setExitHandler(this.exit.bind(this), "RatesFeeder");
     }
 
     async init() {
-        setExitHandler(this.exit.bind(this), "RatesFeeder");
+        this.isStopping = false;
 
         this.account = process.env.RATESFEEDER_ETHEREUM_ACCOUNT;
 
@@ -103,60 +106,78 @@ class RatesFeeder {
     // check current price from different exchanges and update Augmint price on chain if difference is beyond threshold
     // filters out bad prices, errors, and returns with the avarage
     async checkTickerPrice() {
-        log.debug("==> checkTickerPrice() tickers:");
-        this.tickers.forEach(t => {
+        try {
+            log.debug("==> checkTickerPrice() tickers:");
+
+            this.tickers.forEach(t => {
+                log.debug(
+                    "    ",
+                    t.name,
+                    t.lastTicker ? t.lastTicker.price : "null",
+                    t.lastTicker ? t.lastTicker.receivedAt : "null"
+                );
+            });
+
+            const currentAugmintRate = await this.getAugmintRate(CCY);
+
+            const livePrice = this.calculateAugmintPrice(this.tickers);
+            const livePriceDifference =
+                livePrice > 0
+                    ? Math.round((Math.abs(livePrice - currentAugmintRate.price) / currentAugmintRate.price) * 10000) /
+                      10000
+                    : null;
+
             log.debug(
-                "    ",
-                t.name,
-                t.lastTicker ? t.lastTicker.price : "null",
-                t.lastTicker ? t.lastTicker.receivedAt : "null"
+                `    checkTickerPrice() currentAugmintRate[${CCY}]: ${
+                    currentAugmintRate.price
+                } livePrice: ${livePrice} livePriceDifference: ${(livePriceDifference * 100).toFixed(2)} %`
             );
-        });
 
-        const currentAugmintRate = await this.getAugmintRate(CCY);
+            const tickersInfo = this.tickers.map(t => t.getStatus());
+            this.lastTickerCheckResult.checkedAt = new Date();
+            this.lastTickerCheckResult[CCY] = {
+                currentAugmintRate,
+                livePrice,
+                livePriceDifference,
+                tickersInfo
+            };
 
-        const livePrice = this.calculateAugmintPrice(this.tickers);
-        const livePriceDifference =
-            livePrice > 0
-                ? Math.round((Math.abs(livePrice - currentAugmintRate.price) / currentAugmintRate.price) * 10000) /
-                  10000
-                : null;
-
-        log.debug(
-            `    checkTickerPrice() currentAugmintRate[${CCY}]: ${
-                currentAugmintRate.price
-            } livePrice: ${livePrice} livePriceDifference: ${(livePriceDifference * 100).toFixed(2)} %`
-        );
-
-        const tickersInfo = this.tickers.map(t => t.getStatus());
-        this.lastTickerCheckResult.checkedAt = new Date();
-        this.lastTickerCheckResult[CCY] = {
-            currentAugmintRate,
-            livePrice,
-            livePriceDifference,
-            tickersInfo
-        };
-
-        if (livePrice > 0) {
-            if (livePriceDifference * 100 > parseFloat(process.env.RATESFEEDER_LIVE_PRICE_THRESHOLD_PT)) {
-                await promiseTimeout(
-                    process.env.RATESFEEDER_SETRATE_TX_TIMEOUT,
-                    this.updatePrice(CCY, livePrice)
-                ).catch(error => {
-                    // NB: it's not necessarily an error, ethereum network might be just slow.
-                    // we still schedule our next check which will send an update at next tick of checkTickerPrice()
-                    log.error("updatePrice failed with Error: ", error);
-                });
+            if (livePrice > 0) {
+                if (livePriceDifference * 100 > parseFloat(process.env.RATESFEEDER_LIVE_PRICE_THRESHOLD_PT)) {
+                    await promiseTimeout(
+                        process.env.RATESFEEDER_SETRATE_TX_TIMEOUT,
+                        this.updatePrice(CCY, livePrice)
+                    ).catch(error => {
+                        // NB: it's not necessarily an error, ethereum network might be just slow.
+                        // we still schedule our next check which will send an update at next tick of checkTickerPrice()
+                        log.error("updatePrice failed with Error: ", error);
+                    });
+                }
+            } else {
+                log.warn("RatesFeeder couldn't get price from any sources. Not updating price info");
             }
-        } else {
-            log.warn("RatesFeeder couldn't get price from any sources. Not updating price info");
+            if (this.checkTickerPriceError) {
+                this.checkTickerPriceError = null;
+                log.warn(" RatesFeeder checkTickerPrice() success - recovered from error");
+            }
+        } catch (error) {
+            const errorString = JSON.stringify(error);
+            if (this.checkTickerPriceError !== errorString) {
+                this.checkTickerPriceError = errorString;
+                log.warn(
+                    " RatesFeeder checkTickerPrice() failed. Logging the same are will be supressed for future attempts. Error:\n",
+                    error
+                );
+            }
         }
 
-        // Schedule next check
-        this.checkTickerPriceTimer =
-            process.env.RATESFEEDER_CHECK_TICKER_PRICE_INTERVAL > 0
-                ? setTimeout(this.checkTickerPrice.bind(this), process.env.RATESFEEDER_CHECK_TICKER_PRICE_INTERVAL)
-                : null;
+        if (!this.isStopping) {
+            // Schedule next check
+            this.checkTickerPriceTimer =
+                process.env.RATESFEEDER_CHECK_TICKER_PRICE_INTERVAL > 0
+                    ? setTimeout(this.checkTickerPrice.bind(this), process.env.RATESFEEDER_CHECK_TICKER_PRICE_INTERVAL)
+                    : null;
+        }
     }
 
     calculateAugmintPrice(tickers) {
@@ -259,6 +280,7 @@ class RatesFeeder {
     }
 
     async stop() {
+        this.isStopping = true;
         clearTimeout(this.checkTickerPriceTimer);
         if (
             this.web3 &&
