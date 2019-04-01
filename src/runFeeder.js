@@ -78,11 +78,11 @@ function onMatchMakerTxSuccess(nonce, confirmationNumber, receipt, matchMaker) {
 /********* TickerProvider event handlers *****************/
 
 function onTickerConnecting(data, tickerProvider) {
-    log.debug(tickerProvider.name, "connecting.", data);
+    //log.debug(tickerProvider.name, "connecting.", data);
 }
 
 function onTickerConnected(data, tickerProvider) {
-    log.info(tickerProvider.name, "connected.", data);
+    log.info(`${tickerProvider.name} connected at ${data.url} http poll interval: ${data.httpPollInterval}`);
 }
 
 function onTickerDisconnecting(tickerProvider) {
