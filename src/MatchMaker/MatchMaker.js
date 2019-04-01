@@ -138,19 +138,15 @@ class MatchMaker extends EventEmitter {
                 data: encodedABI
             };
 
-            console.log(txToSign);
-
             const [signedTx, nonce] = await Promise.all([
                 this.web3.eth.accounts.signTransaction(txToSign, process.env.MATCHMAKER_ETHEREUM_PRIVATE_KEY),
                 this.web3.eth.getTransactionCount(this.account)
             ]);
 
             log.log(
-                `==> checkAndMatchOrders() sending matchMultipleOrdersTx. matching Orders: ${
+                `==> checkAndMatchOrders() sending matchMultipleOrdersTx. nonce: ${nonce} matching Orders: ${
                     matchingOrders.sellIds.length
-                } nonce: ${nonce} gas: ${matchingOrders.gasEstimate} gasPrice: ${this.web3.utils.fromWei(
-                    await this.web3.eth.getGasPrice()
-                )} account: ${this.account}`
+                }`
             );
 
             const tx = this.web3.eth.sendSignedTransaction(signedTx.rawTransaction, { from: this.account });
