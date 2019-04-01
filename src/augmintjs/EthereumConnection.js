@@ -15,6 +15,7 @@
   properties:
      web3
      provider (=== web3.currentProvider)
+     accounts: array of available accounts received from web3.eth.getAccounts();
      isConnected (=== web3._provider.connected)
      blockGasLimit
      safeBlockGasLimit: as blockGasLimit read on startup and it can change later we provide a "safe" estimate
@@ -116,8 +117,13 @@ class EthereumConnection extends EventEmitter {
             this.isTryingToReconnect = false;
             log.warn(" EthereumConnection - provider connection recovered");
         } else {
-            this.networkId = parseInt(await this.web3.eth.net.getId(), 10);
-            this.blockGasLimit = (await this.web3.eth.getBlock("latest")).gasLimit;
+            let lastBlock;
+            [this.networkId, lastBlock, this.accounts] = await Promise.all([
+                this.web3.eth.net.getId().then(res => parseInt(res, 10)),
+                this.web3.eth.getBlock("latest"),
+                this.web3.eth.getAccounts()
+            ]);
+            this.blockGasLimit = lastBlock.gasLimit;
             this.safeBlockGasLimit = Math.round(this.blockGasLimit * 0.9);
 
             log.debug(" EthereumConnection - provider connected");

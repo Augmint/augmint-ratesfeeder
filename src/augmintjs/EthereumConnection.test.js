@@ -20,9 +20,13 @@ describe("EthereumConnection", () => {
         const expNetworkId = parseInt(await ethereumConnection.web3.eth.net.getId(), 10);
 
         assert(ethereumConnection.isConnected);
-        assert(ethereumConnection.blockGasLimit > 0);
         assert.equal(ethereumConnection.networkId, expNetworkId);
+        assert(ethereumConnection.blockGasLimit > 0);
         assert(ethereumConnection.safeBlockGasLimit, Math.round(ethereumConnection.blockGasLimit * 0.9));
+
+        assert.isArray(ethereumConnection.accounts);
+        ethereumConnection.accounts.forEach(acc => assert(ethereumConnection.web3.utils.isAddress(acc)));
+
         assert(!ethereumConnection.isStopping);
         assert(!ethereumConnection.isTryingToReconnect);
 
