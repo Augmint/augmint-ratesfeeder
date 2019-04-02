@@ -26,7 +26,7 @@
 ********************************************************************************/
 
 require("src/augmintjs/helpers/env.js");
-const log = require("src/augmintjs/helpers/log.js")("runFeeder");
+const log = require("src/augmintjs/helpers/log.js")("EthereumConnection");
 const EventEmitter = require("events");
 const promiseTimeout = require("src/augmintjs/helpers/promiseTimeout.js");
 const setExitHandler = require("src/augmintjs/helpers/sigintHandler.js");
