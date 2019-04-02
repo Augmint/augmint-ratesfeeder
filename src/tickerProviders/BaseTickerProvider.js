@@ -38,10 +38,10 @@ class BaseTickerProvider extends EventEmitter {
         return connectedEventPromise;
     }
 
-    async disconnect() {
+    async disconnect(signal) {
         // implement in provider, call super.disconnect(), connect then emit "connected" event on sucess
         this.isDisconnecting = true;
-        this.emit("disconnecting", this);
+        this.emit("disconnecting", signal, this);
         this.removeAllListeners("tickerreceived");
 
         const disconnectedEventPromise = new Promise(resolve => {
@@ -89,8 +89,7 @@ class BaseTickerProvider extends EventEmitter {
     }
 
     async _exit(signal) {
-        log.info(`*** ${this.name} received ${signal}. Disconnecting.`);
-        await this.disconnect();
+        await this.disconnect(signal);
     }
 }
 

@@ -12,6 +12,11 @@ log.info(
     LOG: ${process.env.LOG}`
 );
 const ethereumConnection = new EthereumConnection();
+
+ethereumConnection.on("connected", onEthereumConnected);
+ethereumConnection.on("disconnecting", onEthereumDisconnecting);
+ethereumConnection.on("disconnected", onEthereumDisconnected);
+
 ethereumConnection
     .connect()
     .then(() => {
@@ -75,6 +80,20 @@ function onMatchMakerTxSuccess(nonce, confirmationNumber, receipt, matchMaker) {
     );
 }
 
+/*** EthereumConnection event handlers ****/
+
+function onEthereumConnected(ethereumConnection) {
+    // log.info("Ethereum connected.");
+}
+
+function onEthereumDisconnecting(signal, ethereumConnection) {
+    // log.info(`*** EthereumConnection received ${signal}. Stopping.`);
+}
+
+function onEthereumDisconnected(event, ethereumConnection) {
+    // log.info("Ethereum disconnected");
+}
+
 /********* TickerProvider event handlers *****************/
 
 function onTickerConnecting(data, tickerProvider) {
@@ -82,15 +101,15 @@ function onTickerConnecting(data, tickerProvider) {
 }
 
 function onTickerConnected(data, tickerProvider) {
-    log.info(`${tickerProvider.name} connected at ${data.url} http poll interval: ${data.httpPollInterval}`);
+    log.info(`${tickerProvider.name} connected at ${data.url} httpPollInterval: ${data.httpPollInterval}`);
 }
 
-function onTickerDisconnecting(tickerProvider) {
-    //log.debug(tickerProvider.name, "disconnecting.");
+function onTickerDisconnecting(signal, tickerProvider) {
+    // log.info(`*** ${tickerProvider.name} received ${signal}. Disconnecting.`);
 }
 
 function onTickerDisconnected(tickerProvider) {
-    log.info(tickerProvider.name, "disconnected.");
+    // log.info(tickerProvider.name, "disconnected.");
 }
 
 function onTickerReceived(newTicker, tickerProvider) {
@@ -106,6 +125,6 @@ function onTickerPriceChanged(newTicker, prevTicker, tickerProvider) {
 }
 
 function onTickerProviderError(error, tickerProvider) {
-    // NB: sever errors are logged from module with log.error
+    // NB: unique errors are logged from module with log.error
     log.debug(tickerProvider.name, "providerError", error);
 }
