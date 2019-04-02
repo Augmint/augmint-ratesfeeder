@@ -60,6 +60,7 @@ class RatesFeeder {
         this.account = null;
         this.lastTickerCheckResult = {};
         this.checkTickerPriceError = null; // to store last error and supress loggin repeating errors
+
         setExitHandler(this.exit.bind(this), "RatesFeeder");
     }
 

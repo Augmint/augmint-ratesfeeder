@@ -33,11 +33,11 @@ class MatchMaker extends EventEmitter {
         this.newOrderEventSubscription = null;
         this.exchangeInstance = null;
         this.account = null;
+
+        setExitHandler(this._exit.bind(this), "MatchMaker");
     }
 
     async init() {
-        setExitHandler(this._exit.bind(this), "MatchMaker");
-
         this.account = process.env.MATCHMAKER_ETHEREUM_ACCOUNT;
 
         if (!this.web3.utils.isAddress(this.account)) {
@@ -215,7 +215,7 @@ class MatchMaker extends EventEmitter {
     }
 
     async _unsubscribe() {
-        if (this.newOrderEventSubscription) {
+        if (this.newOrderEventSubscription && this.ethereumConnection.isConnected) {
             await Promise.all([
                 this.newOrderEventSubscription.unsubscribe(),
                 this.orderFillEventSubscription.unsubscribe()

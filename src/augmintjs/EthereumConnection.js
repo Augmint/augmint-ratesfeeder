@@ -51,7 +51,8 @@ class EthereumConnection extends EventEmitter {
         this.networkId = null;
         this.blockGasLimit = null;
 
-        setExitHandler(this._exit.bind(this), "ethereumConnection");
+        setExitHandler(this._exit.bind(this), "ethereumConnection", CONNECTION_TIMEOUT + 1000);
+
         log.info(
             // IMPORTANT: NEVER expose keys even not in logs!
             `** EthereumConnection loaded with settings:
