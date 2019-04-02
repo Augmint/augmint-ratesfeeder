@@ -163,12 +163,11 @@ class RatesFeeder {
                 log.warn(" RatesFeeder checkTickerPrice() success - recovered from error");
             }
         } catch (error) {
-            const errorString = JSON.stringify(error);
-            if (this.checkTickerPriceError !== errorString) {
-                this.checkTickerPriceError = errorString;
+            if (this.checkTickerPriceError !== error.toString()) {
+                this.checkTickerPriceError = error.toString();
                 log.warn(
-                    " RatesFeeder checkTickerPrice() failed. Logging the same are will be supressed for future attempts. Error:\n",
-                    error
+                    " RatesFeeder checkTickerPrice() failed. Logging the same are will be supressed for future attempts.",
+                    error.toString()
                 );
             }
         }
