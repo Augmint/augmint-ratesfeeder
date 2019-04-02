@@ -1,7 +1,7 @@
-require("../env.js");
-const log = require("src/log.js")("statusApi");
-const promiseTimeout = require("src/helpers/promiseTimeout.js");
-const sigintHandler = require("src/helpers/sigintHandler.js");
+require("src/augmintjs/helpers/env.js");
+const log = require("src/augmintjs/helpers/log.js")("statusApi");
+const promiseTimeout = require("src/augmintjs/helpers/promiseTimeout.js");
+const sigintHandler = require("src/augmintjs/helpers/sigintHandler.js");
 const app = require("./app.js");
 const http = require("http");
 let httpServer;
