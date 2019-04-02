@@ -38,8 +38,8 @@ const CONNECTION_CLOSE_TIMEOUT = 10000;
 class EthereumConnection extends EventEmitter {
     constructor() {
         super();
-        this.web3 = null;
 
+        this.web3 = null;
         this.provider = null;
 
         this.isStopping = false;
@@ -102,14 +102,18 @@ class EthereumConnection extends EventEmitter {
         }
 
         const connectedEventPromise = new Promise((resolve, reject) => {
-            this.once("connected", () => {
+            const tempOnConnected = () => {
+                this.removeListener("providerError", tempOnproviderError);
                 resolve(); // we wait for our custom setup to finish before we resolve connect()
-            });
+            };
 
-            this.on("providerError", () => {
-                // this would be better: this.provider.once("end", e => { .. but web3js has a bug subscrbuing the same event multiple times.
+            const tempOnproviderError = () => {
+                this.removeListener("connected", tempOnConnected);
                 reject(new Error("EthereumConnection connect failed. Provider error received instead of connect"));
-            });
+            };
+
+            this.once("connected", tempOnConnected);
+            this.once("providerError", tempOnproviderError); // this would be better: this.provider.once("end", e => { .. but web3js has a bug subscrbuing the same event multiple times.
         });
 
         const ret = promiseTimeout(CONNECTION_TIMEOUT, connectedEventPromise);
