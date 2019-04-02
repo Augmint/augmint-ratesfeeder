@@ -120,47 +120,52 @@ class RatesFeeder {
                 );
             });
 
-            const currentAugmintRate = await this.getAugmintRate(CCY);
-
-            const livePrice = this.calculateAugmintPrice(this.tickers);
-            const livePriceDifference =
-                livePrice > 0
-                    ? Math.round((Math.abs(livePrice - currentAugmintRate.price) / currentAugmintRate.price) * 10000) /
-                      10000
-                    : null;
-
-            log.debug(
-                `    checkTickerPrice() currentAugmintRate[${CCY}]: ${
-                    currentAugmintRate.price
-                } livePrice: ${livePrice} livePriceDifference: ${(livePriceDifference * 100).toFixed(2)} %`
-            );
-
-            const tickersInfo = this.tickers.map(t => t.getStatus());
-            this.lastTickerCheckResult.checkedAt = new Date();
-            this.lastTickerCheckResult[CCY] = {
-                currentAugmintRate,
-                livePrice,
-                livePriceDifference,
-                tickersInfo
-            };
-
-            if (livePrice > 0) {
-                if (livePriceDifference * 100 > parseFloat(process.env.RATESFEEDER_LIVE_PRICE_THRESHOLD_PT)) {
-                    await promiseTimeout(
-                        process.env.RATESFEEDER_SETRATE_TX_TIMEOUT,
-                        this.updatePrice(CCY, livePrice)
-                    ).catch(error => {
-                        // NB: it's not necessarily an error, ethereum network might be just slow.
-                        // we still schedule our next check which will send an update at next tick of checkTickerPrice()
-                        log.error("updatePrice failed with Error: ", error);
-                    });
-                }
+            if (!this.ethereumConnection.isConnected) {
+                log.debug("checkTickerPrice() - Ethereum is not connected. Skipping Augmint price check. ");
             } else {
-                log.warn("RatesFeeder couldn't get price from any sources. Not updating price info");
-            }
-            if (this.checkTickerPriceError) {
-                this.checkTickerPriceError = null;
-                log.warn(" RatesFeeder checkTickerPrice() success - recovered from error");
+                const currentAugmintRate = await this.getAugmintRate(CCY);
+
+                const livePrice = this.calculateAugmintPrice(this.tickers);
+                const livePriceDifference =
+                    livePrice > 0
+                        ? Math.round(
+                            (Math.abs(livePrice - currentAugmintRate.price) / currentAugmintRate.price) * 10000
+                        ) / 10000
+                        : null;
+
+                log.debug(
+                    `    checkTickerPrice() currentAugmintRate[${CCY}]: ${
+                        currentAugmintRate.price
+                    } livePrice: ${livePrice} livePriceDifference: ${(livePriceDifference * 100).toFixed(2)} %`
+                );
+
+                const tickersInfo = this.tickers.map(t => t.getStatus());
+                this.lastTickerCheckResult.checkedAt = new Date();
+                this.lastTickerCheckResult[CCY] = {
+                    currentAugmintRate,
+                    livePrice,
+                    livePriceDifference,
+                    tickersInfo
+                };
+
+                if (livePrice > 0) {
+                    if (livePriceDifference * 100 > parseFloat(process.env.RATESFEEDER_LIVE_PRICE_THRESHOLD_PT)) {
+                        await promiseTimeout(
+                            process.env.RATESFEEDER_SETRATE_TX_TIMEOUT,
+                            this.updatePrice(CCY, livePrice)
+                        ).catch(error => {
+                            // NB: it's not necessarily an error, ethereum network might be just slow.
+                            // we still schedule our next check which will send an update at next tick of checkTickerPrice()
+                            log.error("updatePrice failed with Error: ", error);
+                        });
+                    }
+                } else {
+                    log.warn("RatesFeeder couldn't get price from any sources. Not updating price info");
+                }
+                if (this.checkTickerPriceError) {
+                    this.checkTickerPriceError = null;
+                    log.warn(" RatesFeeder checkTickerPrice() success - recovered from error");
+                }
             }
         } catch (error) {
             if (this.checkTickerPriceError !== error.toString()) {
