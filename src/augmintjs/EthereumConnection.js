@@ -44,7 +44,7 @@ class EthereumConnection extends EventEmitter {
 
         this.isStopping = false;
         this.isTryingToReconnect = false;
-        this.lastProviderError = null;
+        this.lastProviderErrorEvent = null;
 
         this.reconnectTimer = null;
 
@@ -116,7 +116,7 @@ class EthereumConnection extends EventEmitter {
         if (this.isTryingToReconnect) {
             clearTimeout(this.reconnectTimer);
             this.isTryingToReconnect = false;
-            this.lastProviderError = null;
+            this.lastProviderErrorEvent = null;
             log.warn(" EthereumConnection - provider connection recovered");
         } else {
             let lastBlock;
@@ -141,24 +141,33 @@ class EthereumConnection extends EventEmitter {
         } else {
             if (!this.isTryingToReconnect) {
                 // Unexpected connection loss - _tryToReconnect() will try to reconnect in every RECONNECT_INTERVAL
-                log.warn(" EthereumConnection - Websocket connection ended with code:", e.code, e.reason, e);
+                log.warn(" EthereumConnection - Websocket connection ended with code:", e.code, e.reason);
                 this.emit("connectionLost", e, this);
                 this._tryToReconnect();
             }
         }
     }
 
-    onProviderError(error) {
-        const errorString = JSON.stringify(error);
-        if (this.lastProviderError !== errorString) {
-            this.lastProviderError = errorString;
-            log.warn(
-                " EthereumConnection - provier error. Trying to reconnect. Logging the same error will be supressed until sucessfull reconnect. Error:\n",
-                error
-            );
+    onProviderError(event) {
+        const errorString = JSON.stringify(event);
+        // hack to supress repeating and very verbose connection not open error logging
+        //  Common due to infura dropping web3 connection ca. in every 1-2 hours)
+        //       TODO: check if we should implement web3 keepalive pings or if newever versions on web3js are supporting it
+
+        if (!this.lastProviderErrorEvent) {
+            if (errorString.substring(0))
+                log.warn(
+                    " EthereumConnection - provider error. Trying to reconnect. Logging provider errors are supressed until sucessfull reconnect."
+                );
         }
-        this.emit("providerError", error, this);
-        this._tryToReconnect();
+
+        this.lastProviderErrorEvent = event;
+
+        this.emit("providerError", event, this);
+
+        if (!this.isStopping && !this.isTryingToReconnect) {
+            this._tryToReconnect();
+        }
     }
 
     async stop() {
