@@ -44,6 +44,7 @@ class EthereumConnection extends EventEmitter {
 
         this.isStopping = false;
         this.isTryingToReconnect = false;
+        this.lastProviderError = null;
 
         this.reconnectTimer = null;
 
@@ -89,7 +90,7 @@ class EthereumConnection extends EventEmitter {
             throw new Error(process.env.PROVIDER_TYPE + " is not supported yet");
         }
 
-        // this.provider.on("error", e => log.error("WS Error", e));
+        this.provider.on("error", this.onProviderError.bind(this));
         this.provider.on("end", this.onProviderEnd.bind(this));
         this.provider.on("connect", this.onProviderConnect.bind(this));
 
@@ -115,6 +116,7 @@ class EthereumConnection extends EventEmitter {
         if (this.isTryingToReconnect) {
             clearTimeout(this.reconnectTimer);
             this.isTryingToReconnect = false;
+            this.lastProviderError = null;
             log.warn(" EthereumConnection - provider connection recovered");
         } else {
             let lastBlock;
@@ -144,6 +146,19 @@ class EthereumConnection extends EventEmitter {
                 this._tryToReconnect();
             }
         }
+    }
+
+    onProviderError(error) {
+        const errorString = JSON.stringify(error);
+        if (this.lastProviderError !== errorString) {
+            this.lastProviderError = errorString;
+            log.warn(
+                " EthereumConnection - provier error. Trying to reconnect. Logging the same error will be supressed until sucessfull reconnect. Error:\n",
+                error
+            );
+        }
+        this.emit("providerError", error, this);
+        this._tryToReconnect();
     }
 
     async stop() {
