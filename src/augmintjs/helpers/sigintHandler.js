@@ -1,7 +1,7 @@
 module.exports = setExitHandler;
 
-const log = require("src/log.js")("sigintHandler");
-const promiseTimeout = require("src/helpers/promiseTimeout.js");
+const log = require("src/augmintjs/helpers/log.js")("sigintHandler");
+const promiseTimeout = require("src/augmintjs/helpers/promiseTimeout.js");
 const DEFAULT_EXIT_TIMEOUT = 10000; // how much to wait before timing out disconnect (in ms)
 const SIGNALS = ["SIGINT", "SIGQUIT", "SIGTERM"];
 
