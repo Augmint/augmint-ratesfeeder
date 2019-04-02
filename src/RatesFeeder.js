@@ -18,7 +18,7 @@ TODO:
 require("src/augmintjs/helpers/env.js");
 const log = require("src/augmintjs/helpers/log.js")("ratesFeeder");
 const setExitHandler = require("src/augmintjs/helpers/sigintHandler.js");
-const contractsHelper = require("src/augmintjs/contractConnection.js");
+const contractConnection = require("src/augmintjs/helpers/contractConnection.js");
 const promiseTimeout = require("src/augmintjs/helpers/promiseTimeout.js");
 const TokenAEur = require("src/augmintjs/abiniser/abis/TokenAEur_ABI_2ea91d34a7bfefc8f38ef0e8a5ae24a5.json");
 const Rates = require("src/augmintjs/abiniser/abis/Rates_ABI_73a17ebb0acc71773371c6a8e1c8e6ce.json");
@@ -74,8 +74,8 @@ class RatesFeeder {
         this.web3.eth.defaultAccount = this.account;
 
         [this.augmintRatesInstance, this.augmintTokenInstance] = await Promise.all([
-            contractsHelper.connectLatest(this.ethereumConnection, Rates),
-            contractsHelper.connectLatest(this.ethereumConnection, TokenAEur)
+            contractConnection.connectLatest(this.ethereumConnection, Rates),
+            contractConnection.connectLatest(this.ethereumConnection, TokenAEur)
         ]);
 
         this.decimals = await this.augmintTokenInstance.methods.decimals().call();

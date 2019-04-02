@@ -14,7 +14,7 @@
         address: conected contract instance address
 
 ****/
-const contractsHelper = require("src/augmintjs/contractConnection.js");
+const contractConnection = require("src/augmintjs/helpers/contractConnection.js");
 
 class Contract {
     constructor() {
@@ -43,7 +43,7 @@ class Contract {
         this.ethereumConnection = ethereumConnection;
         this.web3 = this.ethereumConnection.web3;
 
-        this.instance = contractsHelper.connectLatest(this.ethereumConnection, abiFile);
+        this.instance = contractConnection.connectLatest(this.ethereumConnection, abiFile);
 
         return this.instance;
     }

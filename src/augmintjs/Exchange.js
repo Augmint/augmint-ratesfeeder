@@ -49,7 +49,7 @@ Methods:
 const BigNumber = require("bignumber.js");
 const { cost } = require("./gas.js");
 const { constants } = require("./constants.js");
-const contractsHelper = require("src/augmintjs/contractConnection.js");
+const contractConnection = require("src/augmintjs/helpers/contractConnection.js");
 const Contract = require("src/augmintjs/Contract.js");
 const ExchangeArtifact = require("src/augmintjs/abiniser/abis/Exchange_ABI_d3e7f8a261b756f9c40da097608b21cd.json");
 const RatesArtifact = require("src/augmintjs/abiniser/abis/Rates_ABI_73a17ebb0acc71773371c6a8e1c8e6ce.json");
@@ -69,8 +69,8 @@ class Exchange extends Contract {
             exchangeAddress
         );
 
-        this.ratesInstance = contractsHelper.connectLatest(this.ethereumConnection, RatesArtifact);
-        this.tokenInstance = contractsHelper.connectLatest(this.ethereumConnection, AugmintTokenArtifact);
+        this.ratesInstance = contractConnection.connectLatest(this.ethereumConnection, RatesArtifact);
+        this.tokenInstance = contractConnection.connectLatest(this.ethereumConnection, AugmintTokenArtifact);
 
         const [tokenAddressAtExchange, ratesAddressAtExchange] = await Promise.all([
             this.instance.methods.augmintToken().call(),
