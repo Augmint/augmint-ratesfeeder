@@ -72,7 +72,6 @@ class RatesFeeder {
         if (!this.web3.utils.isAddress(this.account)) {
             throw new Error("Invalid RATESFEEDER_ETHEREUM_ACCOUNT: " + this.account);
         }
-        this.web3.eth.defaultAccount = this.account;
 
         [this.augmintRatesInstance, this.augmintTokenInstance] = await Promise.all([
             contractConnection.connectLatest(this.ethereumConnection, Rates),

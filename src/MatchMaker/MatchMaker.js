@@ -43,7 +43,6 @@ class MatchMaker extends EventEmitter {
         if (!this.web3.utils.isAddress(this.account)) {
             throw new Error("Invalid MATCHMAKER_ETHEREUM_ACCOUNT: " + this.account);
         }
-        this.web3.eth.defaultAccount = this.account;
 
         if (this.ethereumConnection.isConnected) {
             await this.onEthereumConnected(); // connect event might be already triggered so we need to call it on init
