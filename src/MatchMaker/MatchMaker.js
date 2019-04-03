@@ -208,10 +208,19 @@ class MatchMaker extends EventEmitter {
     }
 
     async _subscribe() {
-        this.newOrderEventSubscription = this.exchangeInstance.events.NewOrder().on("data", this.onNewOrder.bind(this));
+        this.newOrderEventSubscription = this.exchangeInstance.events
+            .NewOrder()
+            .on("data", this.onNewOrder.bind(this))
+            .on("error", error => {
+                log.warn(" MatchMaker NewOrder subscription error:", error);
+            });
+
         this.orderFillEventSubscription = this.exchangeInstance.events
             .OrderFill()
-            .on("data", this.onOrderFill.bind(this));
+            .on("data", this.onOrderFill.bind(this))
+            .on("error", error => {
+                log.warn(" MatchMaker OrderFill subscription error:", error);
+            });
     }
 
     async _unsubscribe() {
