@@ -1,4 +1,5 @@
 const assert = require("chai").assert;
+const nodeAssert = require("assert");
 const Contract = require("./Contract.js");
 const EthereumConnection = require("./EthereumConnection.js");
 const ethereumConnection = new EthereumConnection();
@@ -12,16 +13,14 @@ describe("constructor", () => {
         assert.isNull(contract.address);
     });
 
-    it("should throw trying to connect without ethereumConnection", () => {
+    it("should throw trying to connect without ethereumConnection", async () => {
         const contract = new Contract();
 
-        assert.throws(
-            () =>
-                contract.connect(
-                    ethereumConnection,
-                    {}
-                ),
-            Error,
+        nodeAssert.rejects(
+            contract.connect(
+                ethereumConnection,
+                {}
+            ),
             /not connected to web3/
         );
     });

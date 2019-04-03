@@ -44,7 +44,7 @@ class MatchMaker extends EventEmitter {
             throw new Error("Invalid MATCHMAKER_ETHEREUM_ACCOUNT: " + this.account);
         }
 
-        if (this.ethereumConnection.isConnected) {
+        if (await this.ethereumConnection.isConnected()) {
             await this.onEthereumConnected(); // connect event might be already triggered so we need to call it on init
         }
 
@@ -223,11 +223,13 @@ class MatchMaker extends EventEmitter {
     }
 
     async _unsubscribe() {
-        if (this.newOrderEventSubscription && this.ethereumConnection.isConnected) {
+        if (this.newOrderEventSubscription) {
             await Promise.all([
                 this.newOrderEventSubscription.unsubscribe(),
                 this.orderFillEventSubscription.unsubscribe()
             ]);
+            this.newOrderEventSubscription = null;
+            this.orderFillEventSubscription = null;
         }
     }
 

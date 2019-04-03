@@ -11,7 +11,7 @@ module.exports = {
         return ethereumConnection.web3;
     },
     ratesFeeder: async function() {
-        if (!ethereumConnection.isConnected) {
+        if (!(await ethereumConnection.isConnected())) {
             await ethereumConnection.connect();
         }
 

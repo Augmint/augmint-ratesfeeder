@@ -7,16 +7,18 @@
   ethereumConnection = new EthereumConnection();
   await ethereumConnection.connect().catch( e => {..} )
 
-  emits:
+  Methods:
+    async isConnected() ==> web3.eth.net.isListening()
+
+  Emits:
      connected(EthereumConnection)
      disconnected(EthereumConnection, error, EthereumConnection)  NB: it's only error code 1000, normal end
      connectionLost(error, EthereumConnection)
 
-  properties:
+  Properties:
      web3
      provider (=== web3.currentProvider)
      accounts: array of available accounts received from web3.eth.getAccounts();
-     isConnected (=== web3._provider.connected)
      blockGasLimit
      safeBlockGasLimit: as blockGasLimit read on startup and it can change later we provide a "safe" estimate
      isTryingToReconnect
@@ -34,6 +36,7 @@ const Web3 = require("web3");
 const RECONNECT_ATTEMPT_DELAY = 5000;
 const CONNECTION_TIMEOUT = 20000;
 const CONNECTION_CLOSE_TIMEOUT = 10000;
+const ISLISTENING_TIMEOUT = 1000; // used at isConnected() for web3.eth.net.isListening() timeout. TODO: check if we still need with newer web3 or better way?
 
 class EthereumConnection extends EventEmitter {
     constructor() {
@@ -68,8 +71,17 @@ class EthereumConnection extends EventEmitter {
         this.projectId = process.env.INFURA_PROJECT_ID || "";
     }
 
-    get isConnected() {
-        return (this.web3 && this.web3._provider && this.web3._provider.connected) || false;
+    async isConnected() {
+        let result = false;
+        if (this.web3) {
+            result = await promiseTimeout(ISLISTENING_TIMEOUT, this.web3.eth.net.isListening()).catch(e => {
+                // Need timeout b/c sListening pending forever when called after a connection.close() TODO: test if needed in newer web3 than beta 33
+                // log.debug("isConnected isListening ERROR (returning false)", e);
+                return false;
+            });
+        }
+
+        return result;
     }
 
     async connect() {
@@ -177,14 +189,15 @@ class EthereumConnection extends EventEmitter {
         this.isStopping = true;
 
         clearTimeout(this.reconnectTimer);
-        if (this.web3 && this.isConnected) {
-            await this.web3.currentProvider.connection.close();
 
+        if (this.web3 && (await this.isConnected())) {
             const disconnectedEventPromise = new Promise(resolve => {
                 this.once("disconnected", () => {
                     resolve();
                 });
             });
+
+            await this.web3.currentProvider.connection.close();
 
             await promiseTimeout(CONNECTION_CLOSE_TIMEOUT, disconnectedEventPromise);
         }
@@ -195,7 +208,7 @@ class EthereumConnection extends EventEmitter {
     }
 
     async _tryToReconnect() {
-        if (!this.isStopping && !this.isConnected) {
+        if (!this.isStopping && !(await this.isConnected())) {
             if (!this.isTryingToReconnect) {
                 this.isTryingToReconnect = true;
                 log.warn(
