@@ -161,7 +161,9 @@ class EthereumConnection extends EventEmitter {
 
         this.isTryingToReconnect = false;
 
-        this.connectionCheckTimer = setInterval(this._checkConnection.bind(this), this.CONNECTION_CHECK_INTERVAL);
+        if (this.CONNECTION_CHECK_INTERVAL > 0) {
+            this.connectionCheckTimer = setInterval(this._checkConnection.bind(this), this.CONNECTION_CHECK_INTERVAL);
+        }
 
         this.emit("connected", this);
     }
@@ -223,7 +225,7 @@ class EthereumConnection extends EventEmitter {
         // subscriptions are starting not to arrive on Infura websocket after a while and provider end is not always triggered
         //  TODO: - check if newer versions of web3 (newer than beta33) are handling webscoket connection drops correclty
         //        - make _tryToReconnect and _checkConnection one function and use only one timer?
-        if (!this.isStopping && !this.isTryingToReconnect) {
+        if (!this.isStopping && !this.isTryingToReconnect && !(await this.isConnected())) {
             log.debug(
                 " EthereumConnection _checkConnection() - ethereumConnection.isConnected() returned false. trying to reconnect"
             );
