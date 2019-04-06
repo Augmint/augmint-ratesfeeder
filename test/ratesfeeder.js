@@ -83,7 +83,7 @@ describe("RatesFeeder: real exchange rate tests", () => {
         ];
 
         const expectedPrice = 659.2;
-        const prevStoredRate = await ratesFeeder.augmintRatesInstance.methods.rates(BYTES_CCY).call();
+        const prevStoredRate = await ratesFeeder.rates.getAugmintRate(CCY);
 
         // test sanity checks:
         assert.notEqual(prevStoredRate.rate, expectedPrice);
@@ -94,30 +94,27 @@ describe("RatesFeeder: real exchange rate tests", () => {
 
         await ratesFeeder.checkTickerPrice();
 
-        await baseHelpers.assertEvent(ratesFeeder.augmintRatesInstance, "RateChanged", {
+        await baseHelpers.assertEvent(ratesFeeder.rates.instance, "RateChanged", {
             symbol: BYTES_CCY.padEnd(66, "0"),
-            newRate: (expectedPrice * ratesFeeder.decimalsDiv).toString()
+            newRate: (expectedPrice * 10 ** ratesFeeder.decimals).toString()
         });
 
-        const newStoredRate = await ratesFeeder.augmintRatesInstance.methods.rates(BYTES_CCY).call();
+        const newStoredRate = await ratesFeeder.rates.getAugmintRate(CCY);
 
         assert.equal(ratesFeeder.lastTickerCheckResult[CCY].livePrice, expectedPrice);
         // lastTickerCheckResult format: { CCY:  { currentAugmintRate: {price, lastUpdated},  livePrice, livePriceDifference, [tickersInfo] } };
         // currentAugmintRate shouldn't be updated yet (checkTickerPrice sends setRate async, currentAugmintRate updated
         //                                              only after tx confirmation when checkTickerPrice called again)
-        assert.equal(
-            ratesFeeder.lastTickerCheckResult[CCY].currentAugmintRate.price,
-            prevStoredRate.rate / ratesFeeder.decimalsDiv
-        );
-        assert.equal(
-            ratesFeeder.lastTickerCheckResult[CCY].currentAugmintRate.lastUpdated / 1000,
+        assert.equal(ratesFeeder.lastTickerCheckResult[CCY].currentAugmintRate.rate, prevStoredRate.rate);
+        assert.deepEqual(
+            new Date(ratesFeeder.lastTickerCheckResult[CCY].currentAugmintRate.lastUpdated),
             prevStoredRate.lastUpdated
         );
 
         assert.isAtLeast(ratesFeeder.lastTickerCheckResult.checkedAt - expectedCheckedAt, 0);
         assert.isAtMost(ratesFeeder.lastTickerCheckResult.checkedAt - expectedCheckedAt, 1000);
 
-        assert.equal(newStoredRate.rate, expectedPrice * ratesFeeder.decimalsDiv);
+        assert.equal(newStoredRate.rate, expectedPrice);
 
         ratesFeeder.tickers = origtickers;
     });
@@ -125,11 +122,10 @@ describe("RatesFeeder: real exchange rate tests", () => {
     it("ratesFeeder should NOT set the price on-chain from tickers when diff < threshold ", async () => {
         const origtickers = ratesFeeder.tickers;
         const expectedCheckedAt = new Date();
-        const prevStoredRate = await ratesFeeder.augmintRatesInstance.methods.rates(BYTES_CCY).call();
-        const expectedLivePriceDifference = (process.env.RATESFEEDER_LIVE_PRICE_THRESHOLD_PT - 0.1) / 100;
-        const newLivePrice = parseFloat(
-            ((prevStoredRate.rate / ratesFeeder.decimalsDiv) * (1 + expectedLivePriceDifference)).toFixed(2)
-        );
+        const prevStoredRate = await ratesFeeder.rates.getAugmintRate(CCY);
+
+        const expectedLivePriceDifference = process.env.RATESFEEDER_LIVE_PRICE_THRESHOLD_PT / 100 - 0.0001;
+        const newLivePrice = parseFloat((prevStoredRate.rate * (1 + expectedLivePriceDifference)).toFixed(2));
 
         ratesFeeder.tickers = [
             { name: "testTicker1", lastTicker: { price: newLivePrice, receivedAt: expectedCheckedAt }, getStatus },
@@ -139,7 +135,7 @@ describe("RatesFeeder: real exchange rate tests", () => {
 
         await ratesFeeder.checkTickerPrice();
 
-        const newStoredRate = await ratesFeeder.augmintRatesInstance.methods.rates(BYTES_CCY).call();
+        const newStoredRate = await ratesFeeder.rates.getAugmintRate(CCY);
         //  events from previous tests are clashing with it - wether change helper funciotn or create and restore ganache snapshot after each test
         // await baseHelpers.assertNoEvents(ratesFeeder.augmintRatesInstance, "RateChanged");
 
@@ -148,12 +144,9 @@ describe("RatesFeeder: real exchange rate tests", () => {
         // lastTickerCheckResult format: { CCY:  { currentAugmintRate: {price, lastUpdated},  livePrice, livePriceDifference, [tickersInfo] } };
         // currentAugmintRate shouldn't be updated yet (checkTickerPrice sends setRate async, currentAugmintRate updated
         //                                              only after tx confirmation when checkTickerPrice called again)
-        assert.equal(
-            ratesFeeder.lastTickerCheckResult[CCY].currentAugmintRate.price,
-            prevStoredRate.rate / ratesFeeder.decimalsDiv
-        );
-        assert.equal(
-            ratesFeeder.lastTickerCheckResult[CCY].currentAugmintRate.lastUpdated / 1000,
+        assert.equal(ratesFeeder.lastTickerCheckResult[CCY].currentAugmintRate.rate, prevStoredRate.rate);
+        assert.deepEqual(
+            ratesFeeder.lastTickerCheckResult[CCY].currentAugmintRate.lastUpdated,
             prevStoredRate.lastUpdated
         );
 
@@ -161,7 +154,7 @@ describe("RatesFeeder: real exchange rate tests", () => {
         assert.isAtMost(ratesFeeder.lastTickerCheckResult.checkedAt - expectedCheckedAt, 1000);
 
         assert.equal(newStoredRate.rate, prevStoredRate.rate);
-        assert.equal(newStoredRate.lastUpdated, prevStoredRate.lastUpdated);
+        assert.deepEqual(newStoredRate.lastUpdated, prevStoredRate.lastUpdated);
 
         ratesFeeder.tickers = origtickers;
     });
@@ -176,11 +169,11 @@ describe("RatesFeeder: real exchange rate tests", () => {
             { name: "testTicker3", lastTicker: { price: null, receivedAt: expectedCheckedAt }, getStatus }
         ];
 
-        const prevStoredRate = await ratesFeeder.augmintRatesInstance.methods.rates(BYTES_CCY).call();
+        const prevStoredRate = await ratesFeeder.rates.getAugmintRate(CCY);
 
         await ratesFeeder.checkTickerPrice();
 
-        const newStoredRate = await ratesFeeder.augmintRatesInstance.methods.rates(BYTES_CCY).call();
+        const newStoredRate = await ratesFeeder.rates.getAugmintRate(CCY);
         //  events from previous tests are clashing with it - wether change helper funciotn or create and restore ganache snapshot after each test
         // await baseHelpers.assertNoEvents(ratesFeeder.augmintRatesInstance, "RateChanged");
 
@@ -189,12 +182,9 @@ describe("RatesFeeder: real exchange rate tests", () => {
         // lastTickerCheckResult format: { CCY:  { currentAugmintRate: {price, lastUpdated},  livePrice, livePriceDifference, [tickersInfo] } };
         // currentAugmintRate shouldn't be updated yet (checkTickerPrice sends setRate async, currentAugmintRate updated
         //                                              only after tx confirmation when checkTickerPrice called again)
-        assert.equal(
-            ratesFeeder.lastTickerCheckResult[CCY].currentAugmintRate.price,
-            prevStoredRate.rate / ratesFeeder.decimalsDiv
-        );
-        assert.equal(
-            ratesFeeder.lastTickerCheckResult[CCY].currentAugmintRate.lastUpdated / 1000,
+        assert.equal(ratesFeeder.lastTickerCheckResult[CCY].currentAugmintRate.rate, prevStoredRate.rate);
+        assert.deepEqual(
+            ratesFeeder.lastTickerCheckResult[CCY].currentAugmintRate.lastUpdated,
             prevStoredRate.lastUpdated
         );
 
@@ -202,7 +192,7 @@ describe("RatesFeeder: real exchange rate tests", () => {
         assert.isAtMost(ratesFeeder.lastTickerCheckResult.checkedAt - expectedCheckedAt, 1000);
 
         assert.equal(newStoredRate.rate, prevStoredRate.rate);
-        assert.equal(newStoredRate.lastUpdated, prevStoredRate.lastUpdated);
+        assert.deepEqual(newStoredRate.lastUpdated, prevStoredRate.lastUpdated);
 
         ratesFeeder.tickers = origtickers;
     });
@@ -212,14 +202,14 @@ describe("RatesFeeder: real exchange rate tests", () => {
 
         await ratesFeeder.updatePrice(CCY, price);
 
-        await baseHelpers.assertEvent(ratesFeeder.augmintRatesInstance, "RateChanged", {
+        await baseHelpers.assertEvent(ratesFeeder.rates.instance, "RateChanged", {
             symbol: BYTES_CCY.padEnd(66, "0"),
-            newRate: (price * ratesFeeder.decimalsDiv).toString()
+            newRate: (price * 10 ** ratesFeeder.decimals).toString()
         });
 
-        const storedRate = await ratesFeeder.augmintRatesInstance.methods.rates(BYTES_CCY).call();
+        const storedRate = await ratesFeeder.rates.getAugmintRate(CCY);
 
-        assert.equal(storedRate.rate, Math.round(price * ratesFeeder.decimalsDiv));
+        assert.equal(storedRate.rate, price);
     });
 
     it("should recover after web3 connection lost");

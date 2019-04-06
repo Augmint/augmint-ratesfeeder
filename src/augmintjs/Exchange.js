@@ -51,14 +51,15 @@ const { cost } = require("./gas.js");
 const { constants } = require("./constants.js");
 const contractConnection = require("src/augmintjs/helpers/contractConnection.js");
 const Contract = require("src/augmintjs/Contract.js");
+const Rates = require("src/augmintjs/Rates.js");
 const ExchangeArtifact = require("src/augmintjs/abiniser/abis/Exchange_ABI_d3e7f8a261b756f9c40da097608b21cd.json");
-const RatesArtifact = require("src/augmintjs/abiniser/abis/Rates_ABI_73a17ebb0acc71773371c6a8e1c8e6ce.json");
+
 const AugmintTokenArtifact = require("src/augmintjs/abiniser/abis/TokenAEur_ABI_2ea91d34a7bfefc8f38ef0e8a5ae24a5.json");
 
 class Exchange extends Contract {
     constructor() {
         super();
-        this.ratesInstance = null;
+        this.rates = null;
         this.tokenInstance = null;
     }
 
@@ -69,7 +70,8 @@ class Exchange extends Contract {
             exchangeAddress
         );
 
-        this.ratesInstance = contractConnection.connectLatest(this.ethereumConnection, RatesArtifact);
+        this.rates = new Rates();
+        await this.rates.connect(this.ethereumConnection);
         this.tokenInstance = contractConnection.connectLatest(this.ethereumConnection, AugmintTokenArtifact);
 
         const [tokenAddressAtExchange, ratesAddressAtExchange] = await Promise.all([
@@ -77,15 +79,20 @@ class Exchange extends Contract {
             this.instance.methods.rates().call()
         ]);
 
-        if (ratesAddressAtExchange !== this.ratesInstance._address) {
+        if (ratesAddressAtExchange !== this.rates.address) {
             throw new Error(
-                " Exchange: latest Rates contract deployment address with provided ABI doesn't match rates contract address at deployed Exchange contract's"
+                `Exchange: latest Rates contract deployment address ${
+                    this.rates.address
+                } for provided ABI doesn't match rates contract address ${ratesAddressAtExchange} at deployed Exchange contract`
             );
         }
 
+        // TODO: replace instance reference with augmintToken.address when AugmintToken class is done
         if (tokenAddressAtExchange !== this.tokenInstance._address) {
             throw new Error(
-                " Exchange: latest AugmintToken contract deployment address with provided ABI doesn't match AugmintToken contract address at deployed Exchange contract's"
+                `Exchange: latest AugmintToken contract deployment address  ${
+                    this.tokenInstance.options.address
+                } for provided ABI doesn't match AugmintToken contract address ${tokenAddressAtExchange} at deployed Exchange contract`
             );
         }
 

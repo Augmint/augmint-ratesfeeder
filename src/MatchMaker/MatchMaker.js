@@ -7,9 +7,8 @@ emmitted events:
 require("src/augmintjs/helpers/env.js");
 const log = require("src/augmintjs/helpers/log.js")("MatchMaker");
 const EventEmitter = require("events");
-const BigNumber = require("bignumber.js");
 const promiseTimeout = require("src/augmintjs/helpers/promiseTimeout.js");
-const { constants } = require("src/augmintjs/constants.js");
+
 const setExitHandler = require("src/augmintjs/helpers/sigintHandler.js");
 const Exchange = require("src/augmintjs/Exchange.js");
 
@@ -106,11 +105,7 @@ class MatchMaker extends EventEmitter {
     }
 
     async _checkAndMatchOrders() {
-        const bn_ethFiatRate = new BigNumber(
-            (await this.exchange.ratesInstance.methods
-                .convertFromWei(this.web3.utils.asciiToHex(CCY), constants.ONE_ETH_IN_WEI.toString())
-                .call()) / constants.DECIMALS_DIV
-        );
+        const bn_ethFiatRate = await this.exchange.rates.getBnEthFiatRate(CCY);
 
         const matchingOrders = await this.exchange.getMatchingOrders(
             bn_ethFiatRate,

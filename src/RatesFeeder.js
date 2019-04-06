@@ -21,10 +21,11 @@ const setExitHandler = require("src/augmintjs/helpers/sigintHandler.js");
 const contractConnection = require("src/augmintjs/helpers/contractConnection.js");
 const promiseTimeout = require("src/augmintjs/helpers/promiseTimeout.js");
 const TokenAEur = require("src/augmintjs/abiniser/abis/TokenAEur_ABI_2ea91d34a7bfefc8f38ef0e8a5ae24a5.json");
-const Rates = require("src/augmintjs/abiniser/abis/Rates_ABI_73a17ebb0acc71773371c6a8e1c8e6ce.json");
+const Rates = require("src/augmintjs/Rates.js");
 const { cost } = require("src/augmintjs/gas.js");
 
 const CCY = "EUR"; // only EUR is suported by TickerProvider providers ATM
+const LIVE_PRICE_DIFFERENCE_DECIMALS = 4; // rounding live price % difference to 2 decimals
 
 const median = values => {
     values.sort((a, b) => a - b);
@@ -52,9 +53,8 @@ class RatesFeeder {
         this.web3 = ethereumConnection.web3;
         this.isInitialised = false;
         this.isStopping = false;
-        this.decimalsDiv = null;
         this.decimals = null;
-        this.augmintRatesInstance = null;
+        this.rates = null;
         this.augmintTokenInstance = null;
         this.checkTickerPriceTimer = null;
         this.account = null;
@@ -73,13 +73,14 @@ class RatesFeeder {
             throw new Error("Invalid RATESFEEDER_ETHEREUM_ACCOUNT: " + this.account);
         }
 
-        [this.augmintRatesInstance, this.augmintTokenInstance] = await Promise.all([
-            contractConnection.connectLatest(this.ethereumConnection, Rates),
+        this.rates = new Rates();
+
+        [, this.augmintTokenInstance] = await Promise.all([
+            this.rates.connect(this.ethereumConnection),
             contractConnection.connectLatest(this.ethereumConnection, TokenAEur)
         ]);
 
         this.decimals = await this.augmintTokenInstance.methods.decimals().call();
-        this.decimalsDiv = 10 ** this.decimals;
 
         // Schedule first check
         this.checkTickerPriceTimer =
@@ -100,7 +101,7 @@ class RatesFeeder {
             RATESFEEDER_CHECK_TICKER_PRICE_INTERVAL: ${process.env.RATESFEEDER_CHECK_TICKER_PRICE_INTERVAL}
             Ticker providers: ${this.tickerNames}
             AugmintToken contract: ${this.augmintTokenInstance._address}
-            Rates contract: ${this.augmintRatesInstance._address}`
+            Rates contract: ${this.rates.address}`
         );
     }
 
@@ -122,19 +123,21 @@ class RatesFeeder {
             if (!(await this.ethereumConnection.isConnected())) {
                 log.debug("checkTickerPrice() - Ethereum is not connected. Skipping Augmint price check. ");
             } else {
-                const currentAugmintRate = await this.getAugmintRate(CCY);
+                const currentAugmintRate = await this.rates.getAugmintRate(CCY);
 
                 const livePrice = this.calculateAugmintPrice(this.tickers);
                 const livePriceDifference =
                     livePrice > 0
-                        ? Math.round(
-                            (Math.abs(livePrice - currentAugmintRate.price) / currentAugmintRate.price) * 10000
-                        ) / 10000
+                        ? parseFloat(
+                            (Math.abs(livePrice - currentAugmintRate.rate) / currentAugmintRate.rate).toFixed(
+                                LIVE_PRICE_DIFFERENCE_DECIMALS
+                            )
+                        )
                         : null;
 
                 log.debug(
                     `    checkTickerPrice() currentAugmintRate[${CCY}]: ${
-                        currentAugmintRate.price
+                        currentAugmintRate.rate
                     } livePrice: ${livePrice} livePriceDifference: ${(livePriceDifference * 100).toFixed(2)} %`
                 );
 
@@ -191,35 +194,22 @@ class RatesFeeder {
             .filter(ticker => ticker.lastTicker && ticker.lastTicker.price > 0)
             .map(t => t.lastTicker.price);
         let augmintPrice = median(prices);
-        augmintPrice = Math.round(augmintPrice * this.decimalsDiv) / this.decimalsDiv;
+
+        augmintPrice = parseFloat(augmintPrice.toFixed(this.decimals));
 
         return augmintPrice === 0 ? null : augmintPrice;
-    }
-
-    async getAugmintRate(currency) {
-        const bytesCCY = this.web3.utils.asciiToHex(currency);
-        const storedRateInfo = await this.augmintRatesInstance.methods.rates(bytesCCY).call();
-        return {
-            price: parseInt(storedRateInfo.rate) / this.decimalsDiv,
-            lastUpdated: new Date(parseInt(storedRateInfo.lastUpdated) * 1000)
-        };
     }
 
     /* Update price on chain.
         price provided rounded to AugmintToken.decimals first */
     async updatePrice(currency, price) {
         try {
-            // Send data back contract on-chain
-            //process.stdout.write("Sending to the Augmint Contracts using Rates.setRate() ... "); // should be logged into a file
-            const bytes_ccy = this.web3.utils.asciiToHex(currency);
-            const priceToSend = Math.round(price * this.decimalsDiv);
-
-            const setRateTx = this.augmintRatesInstance.methods.setRate(bytes_ccy, priceToSend);
+            const setRateTx = this.rates.getSetRateTx(currency, price);
             const encodedABI = setRateTx.encodeABI();
 
             const txToSign = {
                 from: this.account,
-                to: this.augmintRatesInstance._address,
+                to: this.rates.address,
                 gas: cost.SET_RATE_GAS_LIMIT,
                 data: encodedABI
             };
@@ -230,8 +220,8 @@ class RatesFeeder {
             ]);
 
             log.log(
-                `==> updatePrice() nonce: ${nonce} sending setRate(${currency}, ${priceToSend}). currentAugmintRate[${CCY}]: ${
-                    this.lastTickerCheckResult[CCY] ? this.lastTickerCheckResult[CCY].currentAugmintRate.price : "null"
+                `==> updatePrice() nonce: ${nonce} sending setRate(${currency}, ${price}). currentAugmintRate[${CCY}]: ${
+                    this.lastTickerCheckResult[CCY] ? this.lastTickerCheckResult[CCY].currentAugmintRate.rate : "null"
                 } livePrice: ${this.lastTickerCheckResult[CCY] ? this.lastTickerCheckResult[CCY].livePrice : "null"}`
             );
 
@@ -253,7 +243,7 @@ class RatesFeeder {
                         log.log(
                             `    \u2713 updatePrice() nonce: ${nonce}  txHash: ${
                                 receipt.transactionHash
-                            } confirmed: setRate(${currency}, ${priceToSend}) - received ${confirmationNumber} confirmations  `
+                            } confirmed: setRate(${currency}, ${price}) - received ${confirmationNumber} confirmations  `
                         );
                     } else {
                         log.debug(
@@ -273,7 +263,7 @@ class RatesFeeder {
 
             if (!receipt.status) {
                 log.error(`updatePrice() ERROR. setRate failed, returned status: ${receipt.status}
-                       augmintRatesInstance.setRate(${currency}, ${priceToSend}, {nonce: ${nonce}})
+                       rates.setRate(${currency}, ${price}, {nonce: ${nonce}})
                        receipt:
                        ${JSON.stringify(receipt, 3, null)}`);
             }
@@ -298,7 +288,7 @@ class RatesFeeder {
         const status = {
             isInitialised: this.isInitialised,
             account: this.account,
-            ratesContract: this.augmintRatesInstance ? this.augmintRatesInstance._address : "null",
+            ratesContract: this.rates ? this.rates.address : "null",
             augmintTokenContract: this.augmintTokenInstance ? this.augmintTokenInstance._address : "null",
             lastTickerCheckResult: this.lastTickerCheckResult
         };
