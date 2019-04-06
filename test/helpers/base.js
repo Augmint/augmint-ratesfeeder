@@ -1,29 +1,7 @@
 /* Generic test helper functions */
-const EthereumConnection = require("src/augmintjs/EthereumConnection.js");
-const RatesFeeder = require("src/RatesFeeder.js");
-const ethereumConnection = new EthereumConnection();
-let ratesFeeder = null;
-
 const assert = require("chai").assert;
 
 module.exports = {
-    get web3() {
-        return ethereumConnection.web3;
-    },
-    ratesFeeder: async function() {
-        if (!(await ethereumConnection.isConnected())) {
-            await ethereumConnection.connect();
-        }
-
-        if (!ratesFeeder) {
-            ratesFeeder = new RatesFeeder(ethereumConnection, []);
-        }
-
-        if (!ratesFeeder.isInitialised) {
-            await ratesFeeder.init();
-        }
-        return ratesFeeder;
-    },
     getEvents,
     assertEvent,
     assertNoEvents
@@ -31,16 +9,6 @@ module.exports = {
 
 function getEvents(contractInstance, eventName) {
     return contractInstance.getPastEvents(eventName);
-    // console.log(contractInstance.events)
-    // return new Promise((resolve, reject) => {
-    //     contractInstance.events[eventName]().get((err, res) => {
-    //         if (err) {
-    //             return reject(err);
-    //         }
-    //
-    //         resolve(res);
-    //     });
-    // });
 }
 
 async function assertEvent(contractInstance, eventName, _expectedArgs) {
