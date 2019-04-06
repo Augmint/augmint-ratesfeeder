@@ -61,5 +61,20 @@ describe("EthereumConnection", () => {
         sinon.assert.calledOnce(disconnectedSpy);
     });
 
+    it("should return account nonce", async () => {
+        const ethereumConnection = new EthereumConnection();
+        await ethereumConnection.connect();
+        const expectedNonce = await ethereumConnection.web3.eth.getTransactionCount(ethereumConnection.accounts[0]);
+
+        let nonce = await ethereumConnection.getAccountNonce(ethereumConnection.accounts[0]);
+
+        assert.equal(nonce, expectedNonce);
+
+        // with a zero nonce acc, assuming randomAcc has no tx-s from migration subscriptions
+        const randomAccount = "0x107af532e6f828da6fe79699123c9a5ea0123d16";
+        nonce = await ethereumConnection.getAccountNonce(randomAccount);
+        assert.equal(nonce, 0);
+    });
+
     it("should reconnect after connection lost");
 });

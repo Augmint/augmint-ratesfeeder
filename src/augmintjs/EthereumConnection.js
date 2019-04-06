@@ -94,6 +94,10 @@ class EthereumConnection extends EventEmitter {
         return result;
     }
 
+    async getAccountNonce(account) {
+        return await this.web3.eth.getTransactionCount(account);
+    }
+
     async connect() {
         this.isStopping = false;
 

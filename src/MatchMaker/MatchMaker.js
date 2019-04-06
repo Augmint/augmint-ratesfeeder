@@ -129,7 +129,7 @@ class MatchMaker extends EventEmitter {
 
             const [signedTx, nonce] = await Promise.all([
                 this.web3.eth.accounts.signTransaction(txToSign, process.env.MATCHMAKER_ETHEREUM_PRIVATE_KEY),
-                this.web3.eth.getTransactionCount(this.account)
+                this.ethereumConnection.getAccountNonce(this.account)
             ]);
 
             log.log(
