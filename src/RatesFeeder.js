@@ -72,7 +72,6 @@ class RatesFeeder {
         if (!this.web3.utils.isAddress(this.account)) {
             throw new Error("Invalid RATESFEEDER_ETHEREUM_ACCOUNT: " + this.account);
         }
-        this.web3.eth.defaultAccount = this.account;
 
         [this.augmintRatesInstance, this.augmintTokenInstance] = await Promise.all([
             contractConnection.connectLatest(this.ethereumConnection, Rates),
@@ -120,7 +119,7 @@ class RatesFeeder {
                 );
             });
 
-            if (!this.ethereumConnection.isConnected) {
+            if (!(await this.ethereumConnection.isConnected())) {
                 log.debug("checkTickerPrice() - Ethereum is not connected. Skipping Augmint price check. ");
             } else {
                 const currentAugmintRate = await this.getAugmintRate(CCY);
@@ -288,14 +287,6 @@ class RatesFeeder {
     async stop() {
         this.isStopping = true;
         clearTimeout(this.checkTickerPriceTimer);
-        if (
-            this.web3 &&
-            this.web3.currentProvider.connection &&
-            typeof this.web3.currentProvider.connection.close === "function"
-        ) {
-            // connection.close only exists when websocket connection. it is required to close in order node process to stop
-            await this.web3.currentProvider.connection.close();
-        }
     }
 
     async exit(signal) {

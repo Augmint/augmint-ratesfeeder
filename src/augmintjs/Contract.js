@@ -27,14 +27,14 @@ class Contract {
         return this.instance ? this.instance._address : null;
     }
 
-    connect(ethereumConnection, abiFile, address) {
+    async connect(ethereumConnection, abiFile, address) {
         if (address) {
             throw new Error(
                 "Connecting to a contract at arbitary address is not supported yet. Pass no address to connect latest contract deployment at network"
             );
         }
 
-        if (!ethereumConnection.isConnected) {
+        if (!(await ethereumConnection.isConnected())) {
             throw new Error(
                 "Contract: not connected to web3 at passed ethereumConnection. call ethereumConnection.connect first"
             );

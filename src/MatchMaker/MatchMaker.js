@@ -43,9 +43,8 @@ class MatchMaker extends EventEmitter {
         if (!this.web3.utils.isAddress(this.account)) {
             throw new Error("Invalid MATCHMAKER_ETHEREUM_ACCOUNT: " + this.account);
         }
-        this.web3.eth.defaultAccount = this.account;
 
-        if (this.ethereumConnection.isConnected) {
+        if (await this.ethereumConnection.isConnected()) {
             await this.onEthereumConnected(); // connect event might be already triggered so we need to call it on init
         }
 
@@ -208,18 +207,29 @@ class MatchMaker extends EventEmitter {
     }
 
     async _subscribe() {
-        this.newOrderEventSubscription = this.exchangeInstance.events.NewOrder().on("data", this.onNewOrder.bind(this));
+        this.newOrderEventSubscription = this.exchangeInstance.events
+            .NewOrder()
+            .on("data", this.onNewOrder.bind(this))
+            .on("error", error => {
+                log.warn(" MatchMaker NewOrder subscription error:", error);
+            });
+
         this.orderFillEventSubscription = this.exchangeInstance.events
             .OrderFill()
-            .on("data", this.onOrderFill.bind(this));
+            .on("data", this.onOrderFill.bind(this))
+            .on("error", error => {
+                log.warn(" MatchMaker OrderFill subscription error:", error);
+            });
     }
 
     async _unsubscribe() {
-        if (this.newOrderEventSubscription && this.ethereumConnection.isConnected) {
+        if (this.newOrderEventSubscription) {
             await Promise.all([
                 this.newOrderEventSubscription.unsubscribe(),
                 this.orderFillEventSubscription.unsubscribe()
             ]);
+            this.newOrderEventSubscription = null;
+            this.orderFillEventSubscription = null;
         }
     }
 

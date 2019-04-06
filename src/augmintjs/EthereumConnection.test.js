@@ -13,13 +13,13 @@ describe("EthereumConnection", () => {
         ethereumConnection.on("disconnected", disconnectedSpy);
         ethereumConnection.on("connectionLost", connectionLostSpy);
 
-        assert(!ethereumConnection.isConnected);
+        assert(!(await ethereumConnection.isConnected()));
 
         await ethereumConnection.connect();
 
         const expNetworkId = parseInt(await ethereumConnection.web3.eth.net.getId(), 10);
 
-        assert(ethereumConnection.isConnected);
+        assert(await ethereumConnection.isConnected());
         assert.equal(ethereumConnection.networkId, expNetworkId);
         assert(ethereumConnection.blockGasLimit > 0);
         assert(ethereumConnection.safeBlockGasLimit, Math.round(ethereumConnection.blockGasLimit * 0.9));
@@ -36,7 +36,7 @@ describe("EthereumConnection", () => {
 
         await ethereumConnection.stop();
 
-        assert(!ethereumConnection.isConnected);
+        assert(!(await ethereumConnection.isConnected()));
         assert(ethereumConnection.isStopping);
         assert(!ethereumConnection.isTryingToReconnect);
 

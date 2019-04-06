@@ -63,7 +63,7 @@ class Exchange extends Contract {
     }
 
     async connect(ethereumConnection, exchangeAddress) {
-        super.connect(
+        await super.connect(
             ethereumConnection,
             ExchangeArtifact,
             exchangeAddress
