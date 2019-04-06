@@ -1,6 +1,6 @@
-const log = require("src/log.js")("TickerProvider");
+const log = require("src/augmintjs/helpers/log.js")("TickerProvider");
 const EventEmitter = require("events");
-const setExitHandler = require("src/helpers/sigintHandler.js");
+const setExitHandler = require("src/augmintjs/helpers/sigintHandler.js");
 
 class BaseTickerProvider extends EventEmitter {
     // for each provider implement a  getter for name
@@ -9,7 +9,8 @@ class BaseTickerProvider extends EventEmitter {
         super();
 
         this.lastTicker = {
-            price: null, // if provider supports vwap then vwap (Kraken & Bitstamp) otherwise last trade price (Coinbase)
+            lastTradePrice: null,
+            vwap: null, // if provider supports vwap (Kraken & Bitstamp)
             time: null, // time of data. NB: some providers (Kraken) doesn't return it. In that case it will be set to requestedAt time
             requestedAt: null,
             receivedAt: null
@@ -38,10 +39,10 @@ class BaseTickerProvider extends EventEmitter {
         return connectedEventPromise;
     }
 
-    async disconnect() {
+    async disconnect(signal) {
         // implement in provider, call super.disconnect(), connect then emit "connected" event on sucess
         this.isDisconnecting = true;
-        this.emit("disconnecting", this);
+        this.emit("disconnecting", signal, this);
         this.removeAllListeners("tickerreceived");
 
         const disconnectedEventPromise = new Promise(resolve => {
@@ -89,8 +90,7 @@ class BaseTickerProvider extends EventEmitter {
     }
 
     async _exit(signal) {
-        log.info(`*** ${this.name} received ${signal}. Disconnecting.`);
-        await this.disconnect();
+        await this.disconnect(signal);
     }
 }
 

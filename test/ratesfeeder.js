@@ -19,9 +19,9 @@ describe("RatesFeeder: real exchange rate tests", () => {
 
     it("ratesFeeder should return the median price of all tickers", () => {
         const tickers = [
-            { lastTicker: { price: 187.73 } },
-            { lastTicker: { price: 186.73 } },
-            { lastTicker: { price: 187.3 } },
+            { lastTicker: { lastTradePrice: 187.73, vwap: 13 } },
+            { lastTicker: { lastTradePrice: 186.73, vwap: 14 } },
+            { lastTicker: { lastTradePrice: 187.3, vwap: 15 } },
             getStatus
         ];
         const expectedPrice = 187.3;
@@ -31,9 +31,9 @@ describe("RatesFeeder: real exchange rate tests", () => {
 
     it("ratesFeeder should return the median price of all tickers (flash crash)", () => {
         const tickers = [
-            { lastTicker: { price: 170.81 } },
-            { lastTicker: { price: 171.06 } },
-            { lastTicker: { price: 0.1 } },
+            { lastTicker: { lastTradePrice: 170.81, vwap: 13 } },
+            { lastTicker: { lastTradePrice: 171.06, vwap: 13 } },
+            { lastTicker: { lastTradePrice: 0.1, vwap: 13 } },
             getStatus
         ];
         const expectedPrice = 170.81;
@@ -43,9 +43,9 @@ describe("RatesFeeder: real exchange rate tests", () => {
 
     it("ratesFeeder should return the median price of live tickers (1 ticker null)", () => {
         const tickers = [
-            { lastTicker: { price: 176.79 } },
-            { lastTicker: { price: null } },
-            { lastTicker: { price: 176.99 } },
+            { lastTicker: { lastTradePrice: 176.79, vwap: 13 } },
+            { lastTicker: { lastTradePrice: null, vwap: 13 } },
+            { lastTicker: { lastTradePrice: 176.99, vwap: 13 } },
             getStatus
         ];
         const expectedPrice = 176.89;
@@ -55,9 +55,9 @@ describe("RatesFeeder: real exchange rate tests", () => {
 
     it("ratesFeeder should return the median price of live tickers (2 ticker null/0)", () => {
         const tickers = [
-            { lastTicker: { price: 641.12 } },
-            { lastTicker: { price: null } },
-            { lastTicker: { price: 0 } },
+            { lastTicker: { lastTradePrice: 641.12, vwap: 13 } },
+            { lastTicker: { lastTradePrice: null, vwap: 13 } },
+            { lastTicker: { lastTradePrice: 0, vwap: 13 } },
             getStatus
         ];
         const expectedPrice = 641.12;
@@ -66,7 +66,11 @@ describe("RatesFeeder: real exchange rate tests", () => {
     });
 
     it("ratesFeeder should return null median price when all tickers null or zero )", () => {
-        const tickers = [{ lastTicker: { price: 0 } }, { lastTicker: { price: null } }, { lastTicker: { price: 0 } }];
+        const tickers = [
+            { lastTicker: { lastTradePrice: 0, vwap: 13 } },
+            { lastTicker: { lastTradePrice: null, vwap: 13 } },
+            { lastTicker: { lastTradePrice: 0, vwap: 13 } }
+        ];
         const expectedPrice = null;
         const price = ratesFeeder.calculateAugmintPrice(tickers);
         assert.equal(price, expectedPrice);
@@ -77,9 +81,21 @@ describe("RatesFeeder: real exchange rate tests", () => {
         const expectedCheckedAt = new Date();
 
         ratesFeeder.tickers = [
-            { name: "testTicker1", lastTicker: { price: 657.62, receivedAt: expectedCheckedAt }, getStatus },
-            { name: "testTicker2", lastTicker: { price: 659.52, receivedAt: expectedCheckedAt }, getStatus },
-            { name: "testTicker3", lastTicker: { price: 659.2, receivedAt: expectedCheckedAt }, getStatus }
+            {
+                name: "testTicker1",
+                lastTicker: { lastTradePrice: 657.62, vwap: 13, receivedAt: expectedCheckedAt },
+                getStatus
+            },
+            {
+                name: "testTicker2",
+                lastTicker: { lastTradePrice: 659.52, vwap: 13, receivedAt: expectedCheckedAt },
+                getStatus
+            },
+            {
+                name: "testTicker3",
+                lastTicker: { lastTradePrice: 659.2, vwap: 13, receivedAt: expectedCheckedAt },
+                getStatus
+            }
         ];
 
         const expectedPrice = 659.2;
@@ -89,7 +105,7 @@ describe("RatesFeeder: real exchange rate tests", () => {
         assert.notEqual(prevStoredRate.rate, expectedPrice);
         assert(
             (Math.abs(expectedPrice - prevStoredRate.rate) / prevStoredRate.rate) * 100 >
-                process.env.LIVE_PRICE_THRESHOLD_PT
+                process.env.RATESFEEDER_LIVE_PRICE_THRESHOLD_PT
         );
 
         await ratesFeeder.checkTickerPrice();
@@ -126,15 +142,27 @@ describe("RatesFeeder: real exchange rate tests", () => {
         const origtickers = ratesFeeder.tickers;
         const expectedCheckedAt = new Date();
         const prevStoredRate = await ratesFeeder.augmintRatesInstance.methods.rates(BYTES_CCY).call();
-        const expectedLivePriceDifference = (process.env.LIVE_PRICE_THRESHOLD_PT - 0.1) / 100;
+        const expectedLivePriceDifference = (process.env.RATESFEEDER_LIVE_PRICE_THRESHOLD_PT - 0.1) / 100;
         const newLivePrice = parseFloat(
             ((prevStoredRate.rate / ratesFeeder.decimalsDiv) * (1 + expectedLivePriceDifference)).toFixed(2)
         );
 
         ratesFeeder.tickers = [
-            { name: "testTicker1", lastTicker: { price: newLivePrice, receivedAt: expectedCheckedAt }, getStatus },
-            { name: "testTicker2", lastTicker: { price: newLivePrice, receivedAt: expectedCheckedAt }, getStatus },
-            { name: "testTicker3", lastTicker: { price: newLivePrice, receivedAt: expectedCheckedAt }, getStatus }
+            {
+                name: "testTicker1",
+                lastTicker: { lastTradePrice: newLivePrice, vwap: 13, receivedAt: expectedCheckedAt },
+                getStatus
+            },
+            {
+                name: "testTicker2",
+                lastTicker: { lastTradePrice: newLivePrice, vwap: 13, receivedAt: expectedCheckedAt },
+                getStatus
+            },
+            {
+                name: "testTicker3",
+                lastTicker: { lastTradePrice: newLivePrice, vwap: 13, receivedAt: expectedCheckedAt },
+                getStatus
+            }
         ];
 
         await ratesFeeder.checkTickerPrice();
@@ -171,9 +199,21 @@ describe("RatesFeeder: real exchange rate tests", () => {
         const expectedCheckedAt = new Date();
 
         ratesFeeder.tickers = [
-            { name: "testTicker1", lastTicker: { price: null, receivedAt: expectedCheckedAt }, getStatus },
-            { name: "testTicker2", lastTicker: { price: 0, receivedAt: expectedCheckedAt }, getStatus },
-            { name: "testTicker3", lastTicker: { price: null, receivedAt: expectedCheckedAt }, getStatus }
+            {
+                name: "testTicker1",
+                lastTicker: { lastTradePrice: null, vwap: 13, receivedAt: expectedCheckedAt },
+                getStatus
+            },
+            {
+                name: "testTicker2",
+                lastTicker: { lastTradePrice: 0, vwap: 13, receivedAt: expectedCheckedAt },
+                getStatus
+            },
+            {
+                name: "testTicker3",
+                lastTicker: { lastTradePrice: null, vwap: 13, receivedAt: expectedCheckedAt },
+                getStatus
+            }
         ];
 
         const prevStoredRate = await ratesFeeder.augmintRatesInstance.methods.rates(BYTES_CCY).call();
@@ -221,4 +261,6 @@ describe("RatesFeeder: real exchange rate tests", () => {
 
         assert.equal(storedRate.rate, Math.round(price * ratesFeeder.decimalsDiv));
     });
+
+    it("should recover after web3 connection lost");
 });

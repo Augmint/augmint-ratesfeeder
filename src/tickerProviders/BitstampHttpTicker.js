@@ -1,9 +1,7 @@
 /* Bitstamp HTTP API:  https://www.bitstamp.net/api/
- We return vwap as price - bitstamp returns last 24hrs vwap in ticker
- additional we include lastPrice
-*/
+ */
 
-//const log = require("src/log.js")("TickerProvider");
+//const log = require("src/augmintjs/helpers/log.js")("TickerProvider");
 const BaseHttpTickerProvider = require("./BaseHttpTickerProvider.js");
 
 class BitstampHttpTicker extends BaseHttpTickerProvider {
@@ -19,7 +17,7 @@ class BitstampHttpTicker extends BaseHttpTickerProvider {
     processTickerData(data) {
         // https://www.bitstamp.net/api/
         const tickerData = {
-            price: parseFloat(data.vwap), // Last 24 hours volume weighted average price.
+            vwap: parseFloat(data.vwap), // // Last 24 hours volume weighted average price.
             time: new Date(parseInt(data.timestamp) * 1000),
             lastTradePrice: parseFloat(data.last)
         };

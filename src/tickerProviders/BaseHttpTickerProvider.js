@@ -1,5 +1,5 @@
-require("src/env.js");
-const log = require("src/log.js")("TickerProvider");
+require("src/augmintjs/helpers/env.js");
+const log = require("src/augmintjs/helpers/log.js")("TickerProvider");
 const BaseTickerProvider = require("./BaseTickerProvider.js");
 const fetch = require("node-fetch");
 

@@ -1,5 +1,6 @@
 /* Coinbase HTTP API:  https://docs.pro.coinbase.com/#get-product-ticker
- We return last trade price - Coinbase can't provide vwap
+
+ NB: Coinbase can't provide vwap
 */
 
 const BaseHttpTickerProvider = require("./BaseHttpTickerProvider.js");
@@ -17,9 +18,8 @@ class CoinbaseHttpTicker extends BaseHttpTickerProvider {
     processTickerData(data) {
         // https://docs.pro.coinbase.com/#get-product-ticker
 
-        // no vwap so we use last Trade Price.
         const tickerData = {
-            price: parseFloat(data.price),
+            vwap: null, // no vwap from coinbase
             lastTradePrice: parseFloat(data.price),
             time: new Date(data.time)
         };

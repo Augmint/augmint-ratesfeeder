@@ -1,7 +1,7 @@
-require("../env.js");
-const log = require("src/log.js")("statusApi");
-const promiseTimeout = require("src/helpers/promiseTimeout.js");
-const sigintHandler = require("src/helpers/sigintHandler.js");
+require("src/augmintjs/helpers/env.js");
+const log = require("src/augmintjs/helpers/log.js")("statusApi");
+const promiseTimeout = require("src/augmintjs/helpers/promiseTimeout.js");
+const setExitHandler = require("src/augmintjs/helpers/sigintHandler.js");
 const app = require("./app.js");
 const http = require("http");
 let httpServer;
@@ -12,9 +12,9 @@ const CLOSE_TIMEOUT = 5000; // how much wait on close for sockets to close
 const serverSockets = new Set();
 const DEFAULT_PORT = 30000;
 
-function start(ratesFeeder) {
-    sigintHandler(exit, "statusApi");
+setExitHandler(exit, "statusApi");
 
+function start(ratesFeeder) {
     const port = normalizePort(process.env.PORT || DEFAULT_PORT);
 
     app.set("port", port);
@@ -76,16 +76,16 @@ function start(ratesFeeder) {
         const bind = typeof addr === "string" ? "pipe " + addr : "port " + addr.port;
         log.info(` \u2713 statusApi is listening on ${bind}`);
     }
+}
 
-    async function exit(signal) {
-        log.info(`*** statusApi Received ${signal}. Stopping.`);
-        if (httpServer.listening) {
-            return promiseTimeout(CLOSE_TIMEOUT, gracefulClose()).catch(error => {
-                log.info("statusApi httpserver.close timed out or error, force closing all sockets.", error);
-                destroySockets(serverSockets);
-                return;
-            });
-        }
+async function exit(signal) {
+    log.info(`*** statusApi Received ${signal}. Stopping.`);
+    if (httpServer && httpServer.listening) {
+        return promiseTimeout(CLOSE_TIMEOUT, gracefulClose()).catch(error => {
+            log.info("statusApi httpserver.close timed out or error, force closing all sockets.", error);
+            destroySockets(serverSockets);
+            return;
+        });
     }
 }
 

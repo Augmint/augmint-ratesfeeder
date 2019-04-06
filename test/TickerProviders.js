@@ -115,8 +115,8 @@ tickerProviders.forEach(Provider => {
             assert.isNull(status.error);
             assert.isNull(status.lastPollAttemptAt);
             assert.equal(status.pollErrorCount, 0);
-
-            assert.isNull(status.lastTicker.price);
+            assert.isNull(status.lastTicker.lastTradePrice);
+            assert.isNull(status.lastTicker.vwap);
             assert.isNull(status.lastTicker.requestedAt);
             assert.isNull(status.lastTicker.receivedAt);
             assert.isNull(status.lastTicker.time);
@@ -157,9 +157,9 @@ tickerProviders.forEach(Provider => {
             assert.isAtMost(status.lastPollAttemptAt - startedAt, 2000);
             assert.isAtMost(status.lastTicker.requestedAt - status.lastPollAttemptAt, 500);
             assert.isAtMost(status.lastTicker.receivedAt - status.lastPollAttemptAt, 10000);
-            assert.isNotEmpty(status.lastTicker.time);
+            assert.instanceOf(status.lastTicker.time, Date);
 
-            assert.isNumber(status.lastTicker.price);
+            assert.isNumber(status.lastTicker.lastTradePrice);
 
             assert.isNull(status.error);
             assert.equal(status.pollErrorCount, 0);
@@ -258,7 +258,7 @@ tickerProviders.forEach(Provider => {
             assert(tickerPriceChangedSpy.calledOnce);
         });
 
-        it.only("Should only update ticker if time is newer", async () => {
+        it("Should only update ticker if time is newer", async () => {
             const scope = nock(MOCKS[tickerClassName].host)
                 // after connect
                 .get(MOCKS[tickerClassName].path)
