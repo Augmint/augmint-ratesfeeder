@@ -1,7 +1,6 @@
 /* Kraken HTTP API:  https://www.kraken.com/features/api#get-ticker-info
- We return vwap as price - Kraken returns last 24hrs vwap in ticker
- Additionally we include lastPrice.
- NB: Kraken's websocket has vwap, that could be used instead of http polling
+
+ NB: Kraken's websocket has vwaps for different time periods than 24hrs
 */
 
 const log = require("src/augmintjs/helpers/log.js")("TickerProvider");
@@ -24,9 +23,11 @@ class KrakenHttpTicker extends BaseHttpTickerProvider {
         }
         const data = _data.result.XETHZEUR;
 
-        // p[1] is Last 24 hours volume weighted average price.
-        // NB: Kraken doesn't return timestamp of data so it will be set to fetch initiation time by super.poll()
-        const tickerData = { price: parseFloat(data.p[1]), lastTradePrice: parseFloat(data.c[0]) };
+        const tickerData = {
+            vwap: parseFloat(data.p[1]), // p[1] is Last 24 hours volume weighted average price.
+            lastTradePrice: parseFloat(data.c[0])
+            // NB: Kraken doesn't return timestamp of data so it will be set to fetch initiation time by super.poll()
+        };
 
         return tickerData;
     }
