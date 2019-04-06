@@ -11,6 +11,7 @@ let BYTES_CCY;
 
 const getStatus = () => "tickerProvider mock getStatus for test";
 
+let snapshotId;
 let ratesFeeder;
 
 describe("RatesFeeder: onchain tests", () => {
@@ -22,6 +23,14 @@ describe("RatesFeeder: onchain tests", () => {
         await ratesFeeder.init();
 
         BYTES_CCY = ethereumConnection.web3.utils.asciiToHex(CCY);
+    });
+
+    beforeEach(async () => {
+        snapshotId = baseHelpers.takeSnapshot(ethereumConnection.web3);
+    });
+
+    afterEach(async () => {
+        baseHelpers.revertSnapshot(ethereumConnection.web3, snapshotId);
     });
 
     it("ratesFeeder should set the price on-chain from tickers when diff > threshold ", async () => {
