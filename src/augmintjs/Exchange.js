@@ -99,8 +99,17 @@ class Exchange extends Contract {
         return this.instance;
     }
 
-    async getMatchingOrders(bn_ethFiatRate, gasLimit) {
-        const orderBook = await this.fetchOrderBook();
+    /**
+     * Fetches current OrderBook and returns as many matching orderIds (at current ETHFiat rate)
+     * as fits into the provided gas limit.
+     * The returned orderids can be passed to getMatchMultipleOrdersTx
+     * @param  {number}  gasLimit   return as many matches as it fits to gasLimit based on gas cost estimate.
+     * @return {Promise}            pairs of matching order id , ordered by execution sequence
+                                   { buyIds: [], sellIds: [], gasEstimate }
+     */
+    async getMatchingOrders(gasLimit) {
+        const [orderBook, bn_ethFiatRate] = await Promise.all([this.fetchOrderBook(), this.rates.getBnEthFiatRate()]);
+
         const matches = this.calculateMatchingOrders(
             orderBook.buyOrders,
             orderBook.sellOrders,

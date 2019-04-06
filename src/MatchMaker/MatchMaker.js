@@ -105,12 +105,7 @@ class MatchMaker extends EventEmitter {
     }
 
     async _checkAndMatchOrders() {
-        const bn_ethFiatRate = await this.exchange.rates.getBnEthFiatRate(CCY);
-
-        const matchingOrders = await this.exchange.getMatchingOrders(
-            bn_ethFiatRate,
-            this.ethereumConnection.safeBlockGasLimit
-        );
+        const matchingOrders = await this.exchange.getMatchingOrders(this.ethereumConnection.safeBlockGasLimit);
 
         if (matchingOrders.buyIds.length > 0) {
             const matchMultipleOrdersTx = this.exchange.getMatchMultipleOrdersTx(
