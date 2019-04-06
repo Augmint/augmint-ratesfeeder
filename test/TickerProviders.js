@@ -115,8 +115,8 @@ tickerProviders.forEach(Provider => {
             assert.isNull(status.error);
             assert.isNull(status.lastPollAttemptAt);
             assert.equal(status.pollErrorCount, 0);
-
-            assert.isNull(status.lastTicker.price);
+            assert.isNull(status.lastTicker.lastTradePrice);
+            assert.isNull(status.lastTicker.vwap);
             assert.isNull(status.lastTicker.requestedAt);
             assert.isNull(status.lastTicker.receivedAt);
             assert.isNull(status.lastTicker.time);
@@ -159,7 +159,7 @@ tickerProviders.forEach(Provider => {
             assert.isAtMost(status.lastTicker.receivedAt - status.lastPollAttemptAt, 10000);
             assert.instanceOf(status.lastTicker.time, Date);
 
-            assert.isNumber(status.lastTicker.price);
+            assert.isNumber(status.lastTicker.lastTradePrice);
 
             assert.isNull(status.error);
             assert.equal(status.pollErrorCount, 0);

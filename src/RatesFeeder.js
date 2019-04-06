@@ -114,8 +114,9 @@ class RatesFeeder {
                 log.debug(
                     "    ",
                     t.name,
-                    t.lastTicker ? t.lastTicker.price : "null",
-                    t.lastTicker ? t.lastTicker.receivedAt : "null"
+                    t.lastTicker ? t.lastTicker.lastTradePrice : "undefined",
+                    t.lastTicker ? t.lastTicker.vwap : "undefined",
+                    t.lastTicker ? t.lastTicker.receivedAt : "undefined"
                 );
             });
 
@@ -188,8 +189,8 @@ class RatesFeeder {
     calculateAugmintPrice(tickers) {
         // ignore 0 or null prices (exchange down or no price info yet)
         const prices = tickers
-            .filter(ticker => ticker.lastTicker && ticker.lastTicker.price > 0)
-            .map(t => t.lastTicker.price);
+            .filter(ticker => ticker.lastTicker && ticker.lastTicker.lastTradePrice > 0)
+            .map(t => t.lastTicker.lastTradePrice);
         let augmintPrice = median(prices);
         augmintPrice = Math.round(augmintPrice * this.decimalsDiv) / this.decimalsDiv;
 

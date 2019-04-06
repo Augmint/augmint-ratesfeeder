@@ -9,7 +9,8 @@ class BaseTickerProvider extends EventEmitter {
         super();
 
         this.lastTicker = {
-            price: null, // if provider supports vwap then vwap (Kraken & Bitstamp) otherwise last trade price (Coinbase)
+            lastTradePrice: null,
+            vwap: null, // if provider supports vwap (Kraken & Bitstamp)
             time: null, // time of data. NB: some providers (Kraken) doesn't return it. In that case it will be set to requestedAt time
             requestedAt: null,
             receivedAt: null
