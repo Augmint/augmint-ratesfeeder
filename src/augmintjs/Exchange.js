@@ -1,51 +1,3 @@
-/**********************************************************************************
-Exchange contract class
-
-
-Methods:
-    async getMatchingOrders(web3, exchangeInstance, bn_ethFiatRate, gasLimit)
-        Fetches current OrderBook and returns as many matching orderIds as fits into the provided gas limit.
-        The returned orderids can be passed to getMatchMultipleOrdersTx
-
-        Input:
-            web3: an already connected web3 instance
-            exchangeInstance: a web3 Contract instance pointing to the Exchange contract
-            bn_ethFiatRate:
-                current ETHEUR rate in bignumber.js format
-            gasLimit:
-                return as many matches as it fits to gasLimit based on gas cost estimate.
-
-        Returns: pairs of matching order id , ordered by execution sequence
-                { buyIds: [], sellIds: [], gasEstimate }
-
-    async fetchOrderBook(web3, exchangeInstance)
-        Fetches, parses and orders the current, full orderBook from Exchange
-
-        Input:
-            web3: an already connected web3js instance
-            exchangeInstance: a web3 Contract instance pointing to the Exchange contract
-
-        Returns: the current, ordered orderBook in the format of:
-            { buyOrders: [{id, maker, direction, bn_amount (in Wei), bn_ethAmount, amount (in eth), bn_price (in PPM)],
-              sellOrders: [{id, maker, direction, bn_amount (wtihout decimals), amount (in AEUR), bn_price (in PPM)}]
-            }
-
-    getMatchMultipleOrdersTx(exchangeInstance, buyIds, sellIds)
-        Returns a web3 transaction to match the passed buyIds and sellIds. Call .send() on the returned tx.
-
-        Input:
-            exchangeInstance: a web3 Contract instance pointing to the Exchange contract
-            buyIds: array with a list of BUY order IDs (ordered)
-            sellIds: array with a list of SELL order IDs (ordered)
-
-        Returns: web3 transaction which can be executed with .send({account, gas})
-
-
-    isOrderBetter(o1, o2)
-
-    calculateMatchingOrders(buyOrders, sellOrders, gasLimit)
-*********************************************************************************/
-
 const BigNumber = require("bignumber.js");
 const { cost } = require("./gas.js");
 const { constants } = require("./constants.js");
@@ -56,6 +8,10 @@ const ExchangeArtifact = require("src/augmintjs/abiniser/abis/Exchange_ABI_d3e7f
 
 const AugmintTokenArtifact = require("src/augmintjs/abiniser/abis/TokenAEur_ABI_2ea91d34a7bfefc8f38ef0e8a5ae24a5.json");
 
+/**
+ * Augmint Exchange contract class
+ * @extends Contract
+ */
 class Exchange extends Contract {
     constructor() {
         super();
@@ -120,6 +76,12 @@ class Exchange extends Contract {
         return matches;
     }
 
+    /**
+     * Fetches, parses and orders the current, full orderBook from Exchange
+     * @return {Promise} the current, ordered orderBook in the format of:
+     *                  { buyOrders: [{id, maker, direction, bn_amount (in Wei), bn_ethAmount, amount (in eth), bn_price (in PPM)],
+     *                  sellOrders: [{id, maker, direction, bn_amount (wtihout decimals), amount (in AEUR), bn_price (in PPM)}]
+     */
     async fetchOrderBook() {
         // TODO: handle when order changes while iterating
         const isLegacyExchangeContract = typeof this.instance.methods.CHUNK_SIZE === "function";
@@ -217,6 +179,21 @@ class Exchange extends Contract {
         return o1.price * dir > o2.price * dir || (o1.price === o2.price && o1.id > o2.id) ? 1 : -1;
     }
 
+    /**
+     * Returns a signed MatchMultiple transaction, ready to be sent with EthereumConnection.sendSignedTransaction
+     * @param  {string} privateKey  Private key of the Ethereum account to sign the tx with. Include leading 0x
+     * @param  {array} buyIds     a list of buy order id numners
+     * @param  {array} sellIds    list of matching sell order numbers
+     * @return {object}           A web3 transaction object which can be sent using EthereumConnection.sendSignedTransaction
+     */
+    getSignedMultipleOrdersTx(privateKey, buyIds, sellIds) {}
+
+    /**
+     * Returns a web3 transaction to match the passed buyIds and sellIds. Call .send() on the returned tx.
+     * @param  {array} buyIds   array with a list of BUY order IDs (ordered)
+     * @param  {array} sellIds  array with a list of SELL order IDs (ordered)
+     * @return {object}         web3 transaction which can be executed with .send({account, gas})
+     */
     getMatchMultipleOrdersTx(buyIds, sellIds) {
         if (sellIds.length === 0 || sellIds.length !== buyIds.length) {
             throw new Error("invalid buyIds/sellIds recevied - no ids or the the params are not equal.");
@@ -227,22 +204,14 @@ class Exchange extends Contract {
         return tx;
     }
 
-    /*********************************************************************************
-calculateMatchingOrders(_buyOrders, _sellOrders, bn_ethFiatRate, gasLimit)
-    returns matching pairs from ordered ordebook for sending in Exchange.matchMultipleOrders ethereum tx
-    input:
-        buyOrders[ { id, price, bn_ethAmount }]
-            must be ordered by price descending then by id ascending
-        sellOrders[ {id, price, amount }]
-            must be ordered by price ascending then by id ascending
-        bn_ethFiatRate:
-            current ETHEUR rate
-        gasLimit:
-            return as many matches as it fits to gasLimit based on gas cost estimate.
-
-    returns: pairs of matching order id , ordered by execution sequence
-        { buyIds: [], sellIds: [], gasEstimate }
-*********************************************************************************/
+    /**
+     * calculate matching pairs from ordered ordebook for sending in Exchange.matchMultipleOrders ethereum tx
+     * @param  {object} _buyOrders     must be ordered by price descending then by id ascending
+     * @param  {[type]} _sellOrders    must be ordered by price ascending then by id ascending
+     * @param  {[type]} bn_ethFiatRate current ETHFiat rate to use for calculation
+     * @param  {[type]} gasLimit       return as many matches as it fits to gasLimit based on gas cost estimate.
+     * @return {object}                pairs of matching order id , ordered by execution sequence { buyIds: [], sellIds: [], gasEstimate }
+     */
     calculateMatchingOrders(_buyOrders, _sellOrders, bn_ethFiatRate, gasLimit) {
         const sellIds = [];
         const buyIds = [];
