@@ -1,10 +1,28 @@
 const assert = require("chai").assert;
 const EthereumConnection = require("./EthereumConnection.js");
-const ethereumConnection = new EthereumConnection();
+
 const sinon = require("sinon");
 
 describe("EthereumConnection", () => {
+    it("should have an initial state", async () => {
+        const ethereumConnection = new EthereumConnection();
+
+        assert.isNull(ethereumConnection.web3);
+        assert.isNull(ethereumConnection.provider);
+
+        assert(!(await ethereumConnection.isConnected()));
+        assert(!ethereumConnection.isStopping);
+        assert(!ethereumConnection.isTryingToReconnect);
+
+        assert.isNull(ethereumConnection.networkId);
+        assert.isNull(ethereumConnection.blockGasLimit);
+        assert.isNull(ethereumConnection.safeBlockGasLimit);
+        assert.isNull(ethereumConnection.accounts);
+    });
+
     it("should connect & disconnect (local)", async () => {
+        const ethereumConnection = new EthereumConnection();
+
         const connectedSpy = sinon.spy();
         const disconnectedSpy = sinon.spy();
         const connectionLostSpy = sinon.spy();
@@ -12,8 +30,6 @@ describe("EthereumConnection", () => {
         ethereumConnection.on("connected", connectedSpy);
         ethereumConnection.on("disconnected", disconnectedSpy);
         ethereumConnection.on("connectionLost", connectionLostSpy);
-
-        assert(!(await ethereumConnection.isConnected()));
 
         await ethereumConnection.connect();
 

@@ -55,6 +55,9 @@ class EthereumConnection extends EventEmitter {
 
         this.networkId = null;
         this.blockGasLimit = null;
+        this.safeBlockGasLimit = null;
+
+        this.accounts = null;
 
         this.CONNECTION_CHECK_INTERVAL =
             process.env.ETHEREUM_CONNECTION_CHECK_INTERVAL || DEFAULT_CONNECTION_CHECK_INTERVAL;
