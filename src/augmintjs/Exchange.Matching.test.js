@@ -3,7 +3,7 @@ const exchange = new (require("./Exchange.js"))();
 const BigNumber = require("bignumber.js");
 const { cost } = require("./gas.js");
 
-describe("matchMultipleOrdersTx", () => {
+describe("getMatchMultipleOrdersTx", () => {
     it("should match orders on chain");
 });
 

@@ -5,7 +5,7 @@ Exchange contract class
 Methods:
     async getMatchingOrders(web3, exchangeInstance, bn_ethFiatRate, gasLimit)
         Fetches current OrderBook and returns as many matching orderIds as fits into the provided gas limit.
-        The returned orderids can be passed to matchMultipleOrdersTx
+        The returned orderids can be passed to getMatchMultipleOrdersTx
 
         Input:
             web3: an already connected web3 instance
@@ -30,7 +30,7 @@ Methods:
               sellOrders: [{id, maker, direction, bn_amount (wtihout decimals), amount (in AEUR), bn_price (in PPM)}]
             }
 
-    matchMultipleOrdersTx(exchangeInstance, buyIds, sellIds)
+    getMatchMultipleOrdersTx(exchangeInstance, buyIds, sellIds)
         Returns a web3 transaction to match the passed buyIds and sellIds. Call .send() on the returned tx.
 
         Input:
@@ -201,7 +201,7 @@ class Exchange extends Contract {
         return o1.price * dir > o2.price * dir || (o1.price === o2.price && o1.id > o2.id) ? 1 : -1;
     }
 
-    async matchMultipleOrdersTx(buyIds, sellIds) {
+    getMatchMultipleOrdersTx(buyIds, sellIds) {
         if (sellIds.length === 0 || sellIds.length !== buyIds.length) {
             throw new Error("invalid buyIds/sellIds recevied - no ids or the the params are not equal.");
         }

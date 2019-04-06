@@ -118,7 +118,7 @@ class MatchMaker extends EventEmitter {
         );
 
         if (matchingOrders.buyIds.length > 0) {
-            const matchMultipleOrdersTx = await this.exchange.matchMultipleOrdersTx(
+            const matchMultipleOrdersTx = this.exchange.getMatchMultipleOrdersTx(
                 matchingOrders.buyIds,
                 matchingOrders.sellIds
             );
