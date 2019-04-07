@@ -26,11 +26,11 @@ describe("RatesFeeder: onchain tests", () => {
     });
 
     beforeEach(async () => {
-        snapshotId = baseHelpers.takeSnapshot(ethereumConnection.web3);
+        snapshotId = await baseHelpers.takeSnapshot(ethereumConnection.web3);
     });
 
     afterEach(async () => {
-        baseHelpers.revertSnapshot(ethereumConnection.web3, snapshotId);
+        await baseHelpers.revertSnapshot(ethereumConnection.web3, snapshotId);
     });
 
     it("ratesFeeder should set the price on-chain from tickers when diff > threshold ", async () => {
