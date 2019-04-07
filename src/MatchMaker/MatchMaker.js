@@ -106,32 +106,19 @@ class MatchMaker extends EventEmitter {
         const matchingOrders = await this.exchange.getMatchingOrders(); // default gaslimit ethereumConnection.safeBlockGasLimit
 
         if (matchingOrders.buyIds.length > 0) {
-            const matchMultipleOrdersTx = this.exchange.getMatchMultipleOrdersTx(
-                matchingOrders.buyIds,
-                matchingOrders.sellIds
+            const nonce = await this.ethereumConnection.getAccountNonce(this.account);
+
+            const tx = await this.exchange.signAndSendMatchMultipleOrders(
+                this.account,
+                process.env.MATCHMAKER_ETHEREUM_PRIVATE_KEY,
+                matchingOrders
             );
-
-            const encodedABI = matchMultipleOrdersTx.encodeABI();
-
-            const txToSign = {
-                from: this.account,
-                to: this.exchange.address,
-                gasLimit: matchingOrders.gasEstimate,
-                data: encodedABI
-            };
-
-            const [signedTx, nonce] = await Promise.all([
-                this.web3.eth.accounts.signTransaction(txToSign, process.env.MATCHMAKER_ETHEREUM_PRIVATE_KEY),
-                this.ethereumConnection.getAccountNonce(this.account)
-            ]);
 
             log.log(
                 `==> checkAndMatchOrders() sending matchMultipleOrdersTx. nonce: ${nonce} matching Orders: ${
                     matchingOrders.sellIds.length
                 }`
             );
-
-            const tx = this.web3.eth.sendSignedTransaction(signedTx.rawTransaction, { from: this.account });
 
             const receipt = await tx
                 .once("transactionHash", hash => {

@@ -10,6 +10,7 @@ const AugmintTokenArtifact = require("src/augmintjs/abiniser/abis/TokenAEur_ABI_
 
 /**
  * Augmint Exchange contract class
+ * @class Exchange
  * @extends Contract
  */
 class Exchange extends Contract {
@@ -140,7 +141,7 @@ class Exchange extends Contract {
 
         // result format: [id, maker, price, amount]
         const orders = result.reduce(
-            (res, order, idx) => {
+            (res, order) => {
                 const bn_amount = new BigNumber(order[3]);
                 if (!bn_amount.eq(0)) {
                     const parsed = {
@@ -184,19 +185,54 @@ class Exchange extends Contract {
     }
 
     /**
-     * Returns a signed MatchMultiple transaction, ready to be sent with EthereumConnection.sendSignedTransaction
-     * @param  {string} privateKey  Private key of the Ethereum account to sign the tx with. Include leading 0x
-     * @param  {array} buyIds     a list of buy order id numners
-     * @param  {array} sellIds    list of matching sell order numbers
-     * @return {object}           A web3 transaction object which can be sent using EthereumConnection.sendSignedTransaction
+     * Sends a matchMultipleOrders transaction
+     * Intended to use when account wallet is available (e.g. MetamMask)  * @param {string} account    tx sender account
+     * @param {string} account    tx sender account
+     * @param  {*} matchingOrders
+     * @returns {Promise}     A web3.js Promi event object sent to the network. Resolves when mined and you can subscribe to events, eg. .on("confirmation")
+     * @memberof Exchange
      */
-    getSignedMultipleOrdersTx(privateKey, buyIds, sellIds) {}
+    async matchMultipleOrders(account, matchingOrders) {
+        const matchMultipleOrdersTx = this.getMatchMultipleOrdersTx(matchingOrders.buyIds, matchingOrders.sellIds);
+
+        return matchMultipleOrdersTx.send({ from: account, gas: matchingOrders.gasEstimate });
+    }
 
     /**
-     * Returns a web3 transaction to match the passed buyIds and sellIds. Call .send() on the returned tx.
+     * Signs a matchMultipleOrders transaction with a private key and sends it (with web3.js sendSignedTransaction)     *
+     * Intended to use when private key is available, e.g. backend services
+     * @param  {string} account     tx signer ethereum account
+     * @param  {string} privateKey  Private key of the Ethereum account to sign the tx with. Include leading 0x
+     * @param  {object} matchingOrders    Returned by getMatchingOrders in format of {buyIds:[], sellIds: [], gasEstimate}
+     * @return {Promise}           A web3.js Promi event object sent to the network. Resolves when mined and you can subscribe to events, eg. .on("confirmation")
+     * @memberof Exchange
+     */
+    async signAndSendMatchMultipleOrders(account, privateKey, matchingOrders) {
+        const matchMultipleOrdersTx = this.getMatchMultipleOrdersTx(matchingOrders.buyIds, matchingOrders.sellIds);
+
+        const encodedABI = matchMultipleOrdersTx.encodeABI();
+
+        const txToSign = {
+            from: account,
+            to: this.address,
+            gasLimit: matchingOrders.gasEstimate,
+            data: encodedABI
+        };
+
+        const signedTx = await this.web3.eth.accounts.signTransaction(
+            txToSign,
+            process.env.MATCHMAKER_ETHEREUM_PRIVATE_KEY
+        );
+
+        return this.web3.eth.sendSignedTransaction(signedTx.rawTransaction);
+    }
+
+    /**
+     * Returns a web3 transaction to match the passed buyIds and sellIds. Call .send() or sign it on the returned tx.
      * @param  {array} buyIds   array with a list of BUY order IDs (ordered)
      * @param  {array} sellIds  array with a list of SELL order IDs (ordered)
-     * @return {object}         web3 transaction which can be executed with .send({account, gas})
+     * @return {Promise}         web3 transaction which can be executed with .send({account, gas})
+     * @memberof Exchange
      */
     getMatchMultipleOrdersTx(buyIds, sellIds) {
         if (sellIds.length === 0 || sellIds.length !== buyIds.length) {
@@ -211,9 +247,9 @@ class Exchange extends Contract {
     /**
      * calculate matching pairs from ordered ordebook for sending in Exchange.matchMultipleOrders ethereum tx
      * @param  {object} _buyOrders     must be ordered by price descending then by id ascending
-     * @param  {[type]} _sellOrders    must be ordered by price ascending then by id ascending
-     * @param  {[type]} bn_ethFiatRate current ETHFiat rate to use for calculation
-     * @param  {[type]} gasLimit       return as many matches as it fits to gasLimit based on gas cost estimate.
+     * @param  {array} _sellOrders    must be ordered by price ascending then by id ascending
+     * @param  {BigNumber} bn_ethFiatRate current ETHFiat rate to use for calculation
+     * @param  {number} gasLimit       return as many matches as it fits to gasLimit based on gas cost estimate.
      * @return {object}                pairs of matching order id , ordered by execution sequence { buyIds: [], sellIds: [], gasEstimate }
      */
     calculateMatchingOrders(_buyOrders, _sellOrders, bn_ethFiatRate, gasLimit) {
