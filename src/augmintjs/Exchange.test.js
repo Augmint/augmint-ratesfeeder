@@ -7,16 +7,20 @@ const { constants } = require("./constants.js");
 const { takeSnapshot, revertSnapshot } = require("src/augmintjs/testHelpers/ganache.js");
 
 describe("connection", () => {
+    const CCY = "EUR";
     const ethereumConnection = new EthereumConnection();
     const exchange = new Exchange();
+
     it("should connect to latest contract", async () => {
         await ethereumConnection.connect();
 
         assert.isNull(exchange.address);
+        assert.isNull(exchange.currency);
         await exchange.connect(ethereumConnection);
         assert.equal(exchange.address, "0xFAceA53a04bEfCC6C9246eb3951814cfEE2A1415");
         assert.equal(exchange.rates.address, "0xb0a2a8e846b66C7384F52635CECEf5280F766C8B");
         assert.equal(exchange.tokenInstance._address, "0xBbEcfF5Db2F9cCcc936895121802FC15053344c6"); // when augmintToken is a class:  assert.equal(exchange.augmintToken.address, "0xBbEcfF5Db2F9cCcc936895121802FC15053344c6");
+        assert.equal(exchange.currency, CCY);
     });
 
     it("should connect to legacy Excahnge contract");

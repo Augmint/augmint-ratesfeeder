@@ -17,6 +17,7 @@ class Exchange extends Contract {
         super();
         this.rates = null;
         this.tokenInstance = null;
+        this.currency = null;
     }
 
     async connect(ethereumConnection, exchangeAddress) {
@@ -26,10 +27,14 @@ class Exchange extends Contract {
         await this.rates.connect(this.ethereumConnection);
         this.tokenInstance = contractConnection.connectLatest(this.ethereumConnection, AugmintTokenArtifact);
 
-        const [tokenAddressAtExchange, ratesAddressAtExchange] = await Promise.all([
+        const [tokenAddressAtExchange, ratesAddressAtExchange, bytes32_peggedSymbol] = await Promise.all([
             this.instance.methods.augmintToken().call(),
-            this.instance.methods.rates().call()
+            this.instance.methods.rates().call(),
+            this.tokenInstance.methods.peggedSymbol().call()
         ]);
+
+        const currencyWithTrailing = this.web3.utils.toAscii(bytes32_peggedSymbol);
+        this.currency = currencyWithTrailing.substr(0, currencyWithTrailing.indexOf("\0")); // remove trailling \u0000s
 
         if (ratesAddressAtExchange !== this.rates.address) {
             throw new Error(
@@ -60,7 +65,10 @@ class Exchange extends Contract {
                                    { buyIds: [], sellIds: [], gasEstimate }
      */
     async getMatchingOrders(gasLimit) {
-        const [orderBook, bn_ethFiatRate] = await Promise.all([this.fetchOrderBook(), this.rates.getBnEthFiatRate()]);
+        const [orderBook, bn_ethFiatRate] = await Promise.all([
+            this.fetchOrderBook(),
+            this.rates.getBnEthFiatRate(this.currency)
+        ]);
 
         const matches = this.calculateMatchingOrders(
             orderBook.buyOrders,

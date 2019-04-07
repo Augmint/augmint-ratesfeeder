@@ -12,8 +12,6 @@ const promiseTimeout = require("src/augmintjs/helpers/promiseTimeout.js");
 const setExitHandler = require("src/augmintjs/helpers/sigintHandler.js");
 const Exchange = require("src/augmintjs/Exchange.js");
 
-const CCY = "EUR"; // only EUR is suported by MatchMaker ATM
-
 class MatchMaker extends EventEmitter {
     constructor(ethereumConnection) {
         super();
@@ -57,8 +55,8 @@ class MatchMaker extends EventEmitter {
             `** MatchMaker started with settings:
             MATCHMAKER_ETHEREUM_ACCOUNT: ${process.env.MATCHMAKER_ETHEREUM_ACCOUNT}
             MATCHMAKER_ETHEREUM_PRIVATE_KEY: ${
-    process.env.MATCHMAKER_ETHEREUM_PRIVATE_KEY ? "[secret]" : "not provided"
-}
+                process.env.MATCHMAKER_ETHEREUM_PRIVATE_KEY ? "[secret]" : "not provided"
+            }
             Exchange contract: ${this.exchange.address}`
         );
     }
