@@ -11,10 +11,7 @@
         "es6": true
     },
     "rules": {
-        "indent": [
-            "warn",
-            4
-        ],
+        "indent": "off",
         "max-len": "off",
         "radix": "off",
         "no-unused-vars": "warn",
