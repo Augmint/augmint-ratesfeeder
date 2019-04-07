@@ -18,9 +18,8 @@ TODO:
 require("src/augmintjs/helpers/env.js");
 const log = require("src/augmintjs/helpers/log.js")("ratesFeeder");
 const setExitHandler = require("src/augmintjs/helpers/sigintHandler.js");
-const contractConnection = require("src/augmintjs/helpers/contractConnection.js");
 const promiseTimeout = require("src/augmintjs/helpers/promiseTimeout.js");
-const TokenAEur = require("src/augmintjs/abiniser/abis/TokenAEur_ABI_2ea91d34a7bfefc8f38ef0e8a5ae24a5.json");
+const AugmintToken = require("src/augmintjs/AugmintToken.js");
 const Rates = require("src/augmintjs/Rates.js");
 const { cost } = require("src/augmintjs/gas.js");
 
@@ -55,7 +54,7 @@ class RatesFeeder {
         this.isStopping = false;
         this.decimals = null;
         this.rates = null;
-        this.augmintTokenInstance = null;
+        this.augmintToken = null;
         this.checkTickerPriceTimer = null;
         this.account = null;
         this.lastTickerCheckResult = {};
@@ -74,13 +73,14 @@ class RatesFeeder {
         }
 
         this.rates = new Rates();
+        this.augmintToken = new AugmintToken();
 
-        [, this.augmintTokenInstance] = await Promise.all([
+        await Promise.all([
             this.rates.connect(this.ethereumConnection),
-            contractConnection.connectLatest(this.ethereumConnection, TokenAEur)
+            this.augmintToken.connect(this.ethereumConnection)
         ]);
 
-        this.decimals = await this.augmintTokenInstance.methods.decimals().call();
+        this.decimals = this.augmintToken.decimals;
 
         // Schedule first check
         this.checkTickerPriceTimer =
@@ -94,13 +94,13 @@ class RatesFeeder {
             `** RatesFeedeer started with settings:
             RATESFEEDER_ETHEREUM_ACCOUNT: ${process.env.RATESFEEDER_ETHEREUM_ACCOUNT}
             RATESFEEDER_ETHEREUM_PRIVATE_KEY: ${
-    process.env.RATESFEEDER_ETHEREUM_PRIVATE_KEY ? "[secret]" : "not provided"
-}
+                process.env.RATESFEEDER_ETHEREUM_PRIVATE_KEY ? "[secret]" : "not provided"
+            }
             RATESFEEDER_LIVE_PRICE_THRESHOLD_PT: ${process.env.RATESFEEDER_LIVE_PRICE_THRESHOLD_PT}
             RATESFEEDER_SETRATE_TX_TIMEOUT: ${process.env.RATESFEEDER_SETRATE_TX_TIMEOUT}
             RATESFEEDER_CHECK_TICKER_PRICE_INTERVAL: ${process.env.RATESFEEDER_CHECK_TICKER_PRICE_INTERVAL}
             Ticker providers: ${this.tickerNames}
-            AugmintToken contract: ${this.augmintTokenInstance._address}
+            AugmintToken contract: ${this.augmintToken.address}
             Rates contract: ${this.rates.address}`
         );
     }
@@ -130,10 +130,10 @@ class RatesFeeder {
                 const livePriceDifference =
                     livePrice > 0
                         ? parseFloat(
-                            (Math.abs(livePrice - currentAugmintRate.rate) / currentAugmintRate.rate).toFixed(
-                                LIVE_PRICE_DIFFERENCE_DECIMALS
-                            )
-                        )
+                              (Math.abs(livePrice - currentAugmintRate.rate) / currentAugmintRate.rate).toFixed(
+                                  LIVE_PRICE_DIFFERENCE_DECIMALS
+                              )
+                          )
                         : null;
 
                 log.debug(
@@ -290,7 +290,7 @@ class RatesFeeder {
             isInitialised: this.isInitialised,
             account: this.account,
             ratesContract: this.rates ? this.rates.address : "null",
-            augmintTokenContract: this.augmintTokenInstance ? this.augmintTokenInstance._address : "null",
+            augmintTokenContract: this.augmintToken ? this.augmintToken.address : "null",
             lastTickerCheckResult: this.lastTickerCheckResult
         };
         return status;

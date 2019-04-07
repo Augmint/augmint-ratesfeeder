@@ -1,12 +1,12 @@
 const BigNumber = require("bignumber.js");
 const { cost } = require("./gas.js");
 const { constants } = require("./constants.js");
-const contractConnection = require("src/augmintjs/helpers/contractConnection.js");
 const Contract = require("src/augmintjs/Contract.js");
-const Rates = require("src/augmintjs/Rates.js");
-const ExchangeArtifact = require("src/augmintjs/abiniser/abis/Exchange_ABI_d3e7f8a261b756f9c40da097608b21cd.json");
 
-const AugmintTokenArtifact = require("src/augmintjs/abiniser/abis/TokenAEur_ABI_2ea91d34a7bfefc8f38ef0e8a5ae24a5.json");
+const AugmintToken = require("src/augmintjs/AugmintToken.js");
+const Rates = require("src/augmintjs/Rates.js");
+
+const ExchangeArtifact = require("src/augmintjs/abiniser/abis/Exchange_ABI_d3e7f8a261b756f9c40da097608b21cd.json");
 
 /**
  * Augmint Exchange contract class
@@ -17,8 +17,9 @@ class Exchange extends Contract {
     constructor() {
         super();
         this.rates = null;
-        this.tokenInstance = null;
-        this.currency = null;
+        this.augmintToken = null;
+        this.tokenPeggedSymbol = null; /** fiat symbol this exchange is linked to (via Exchange.augmintToken) */
+        this.tokenSymbol = null; /** token symbol this exchange contract instance is linked to  */
     }
 
     async connect(ethereumConnection, exchangeAddress) {
@@ -26,16 +27,11 @@ class Exchange extends Contract {
 
         this.rates = new Rates();
         await this.rates.connect(this.ethereumConnection);
-        this.tokenInstance = contractConnection.connectLatest(this.ethereumConnection, AugmintTokenArtifact);
 
-        const [tokenAddressAtExchange, ratesAddressAtExchange, bytes32_peggedSymbol] = await Promise.all([
+        const [tokenAddressAtExchange, ratesAddressAtExchange] = await Promise.all([
             this.instance.methods.augmintToken().call(),
-            this.instance.methods.rates().call(),
-            this.tokenInstance.methods.peggedSymbol().call()
+            this.instance.methods.rates().call()
         ]);
-
-        const currencyWithTrailing = this.web3.utils.toAscii(bytes32_peggedSymbol);
-        this.currency = currencyWithTrailing.substr(0, currencyWithTrailing.indexOf("\0")); // remove trailling \u0000s
 
         if (ratesAddressAtExchange !== this.rates.address) {
             throw new Error(
@@ -45,14 +41,20 @@ class Exchange extends Contract {
             );
         }
 
-        // TODO: replace instance reference with augmintToken.address when AugmintToken class is done
-        if (tokenAddressAtExchange !== this.tokenInstance._address) {
+        this.augmintToken = new AugmintToken();
+        await this.augmintToken.connect(this.ethereumConnection);
+
+        if (tokenAddressAtExchange !== this.augmintToken.address) {
             throw new Error(
-                `Exchange: latest AugmintToken contract deployment address  ${
-                    this.tokenInstance.options.address
-                } for provided ABI doesn't match AugmintToken contract address ${tokenAddressAtExchange} at deployed Exchange contract`
+                `Exchange: latest AugmintToken contract deployment address at ${
+                    this.augmintToken.address
+                }  doesn't match AugmintToken contract address set at latest deployed Exchange contract: ${tokenAddressAtExchange}.
+                Connecting to legacy Exchanges is not supported yet`
             );
         }
+
+        this.tokenPeggedSymbol = this.augmintToken.peggedSymbol;
+        this.tokenSymbol = this.augmintToken.symbol;
 
         return this.instance;
     }
@@ -68,7 +70,7 @@ class Exchange extends Contract {
     async getMatchingOrders(gasLimit = this.ethereumConnection.safeBlockGasLimit) {
         const [orderBook, bn_ethFiatRate] = await Promise.all([
             this.fetchOrderBook(),
-            this.rates.getBnEthFiatRate(this.currency)
+            this.rates.getBnEthFiatRate(this.tokenPeggedSymbol)
         ]);
 
         const matches = this.calculateMatchingOrders(
@@ -85,7 +87,7 @@ class Exchange extends Contract {
      * Fetches, parses and orders the current, full orderBook from Exchange
      * @return {Promise} the current, ordered orderBook in the format of:
      *                  { buyOrders: [{id, maker, direction, bn_amount (in Wei), bn_ethAmount, amount (in eth), bn_price (in PPM)],
-     *                  sellOrders: [{id, maker, direction, bn_amount (wtihout decimals), amount (in AEUR), bn_price (in PPM)}]
+     *                  sellOrders: [{id, maker, direction, bn_amount (without decimals), amount (in AEUR), bn_price (in PPM)}]
      */
     async fetchOrderBook() {
         // TODO: handle when order changes while iterating
@@ -161,7 +163,7 @@ class Exchange extends Contract {
                         res.buyOrders.push(parsed);
                     } else {
                         parsed.direction = constants.TOKEN_SELL;
-                        parsed.amount = parseFloat((parsed.bn_amount / constants.DECIMALS_DIV).toFixed(2));
+                        parsed.amount = parseFloat((parsed.bn_amount / this.augmintToken.decimalsDiv).toFixed(2));
 
                         res.sellOrders.push(parsed);
                     }

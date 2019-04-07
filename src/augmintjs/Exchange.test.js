@@ -15,12 +15,16 @@ describe("connection", () => {
         await ethereumConnection.connect();
 
         assert.isNull(exchange.address);
-        assert.isNull(exchange.currency);
+        assert.isNull(exchange.tokenPeggedSymbol);
+        assert.isNull(exchange.tokenSymbol);
+
         await exchange.connect(ethereumConnection);
+
         assert.equal(exchange.address, "0xFAceA53a04bEfCC6C9246eb3951814cfEE2A1415");
         assert.equal(exchange.rates.address, "0xb0a2a8e846b66C7384F52635CECEf5280F766C8B");
-        assert.equal(exchange.tokenInstance._address, "0xBbEcfF5Db2F9cCcc936895121802FC15053344c6"); // when augmintToken is a class:  assert.equal(exchange.augmintToken.address, "0xBbEcfF5Db2F9cCcc936895121802FC15053344c6");
-        assert.equal(exchange.currency, CCY);
+        assert.equal(exchange.augmintToken.address, "0xBbEcfF5Db2F9cCcc936895121802FC15053344c6");
+        assert.equal(exchange.tokenPeggedSymbol, CCY);
+        assert.equal(exchange.tokenSymbol, "AEUR");
     });
 
     it("should connect to legacy Excahnge contract");
@@ -66,7 +70,7 @@ describe("fetchOrderBook", () => {
             .placeBuyTokenOrder(bn_buyPrice.toString())
             .send({ from: buyMaker, value: bn_buyWeiAmount.toString(), gas: 1000000 });
 
-        await exchange.tokenInstance.methods
+        await exchange.augmintToken.instance.methods
             .transferAndNotify(exchange.address, bn_sellTokenAmount.toString(), bn_sellPrice.toString())
             .send({ from: sellMaker, gas: 1000000 });
 

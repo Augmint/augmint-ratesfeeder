@@ -33,7 +33,7 @@ describe("MatchMultipleOrders onchain", () => {
             value: web3.utils.toWei("0.1"),
             gas: 1000000
         });
-        await exchange.tokenInstance.methods.transferAndNotify(exchange.address, "1000", "1000000").send({
+        await exchange.augmintToken.instance.methods.transferAndNotify(exchange.address, "1000", "1000000").send({
             from: accounts[0],
             gas: 1000000
         });
@@ -56,7 +56,7 @@ describe("MatchMultipleOrders onchain", () => {
                 .placeBuyTokenOrder("1000000")
                 .send({ from: accounts[1], value: web3.utils.toWei("0.1"), gas: 1000000 }),
 
-            exchange.tokenInstance.methods
+            exchange.augmintToken.instance.methods
                 .transferAndNotify(exchange.address, "1000", "1000000")
                 .send({ from: accounts[0], gas: 1000000 })
         ]);
@@ -83,7 +83,7 @@ describe("MatchMultipleOrders onchain", () => {
                 .placeBuyTokenOrder("1000000")
                 .send({ from: accounts[1], value: web3.utils.toWei("0.1"), gas: 1000000 }),
 
-            exchange.tokenInstance.methods
+            exchange.augmintToken.instance.methods
                 .transferAndNotify(exchange.address, "1000", "1000000")
                 .send({ from: accounts[0], gas: 1000000 })
         ]);
