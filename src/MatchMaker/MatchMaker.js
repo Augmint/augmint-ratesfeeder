@@ -103,7 +103,7 @@ class MatchMaker extends EventEmitter {
     }
 
     async _checkAndMatchOrders() {
-        const matchingOrders = await this.exchange.getMatchingOrders(this.ethereumConnection.safeBlockGasLimit);
+        const matchingOrders = await this.exchange.getMatchingOrders(); // default gaslimit ethereumConnection.safeBlockGasLimit
 
         if (matchingOrders.buyIds.length > 0) {
             const matchMultipleOrdersTx = this.exchange.getMatchMultipleOrdersTx(

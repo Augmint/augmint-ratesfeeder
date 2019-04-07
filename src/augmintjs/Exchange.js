@@ -57,14 +57,14 @@ class Exchange extends Contract {
     }
 
     /**
-     * Fetches current OrderBook and returns as many matching orderIds (at current ETHFiat rate)
-     * as fits into the provided gas limit.
-     * The returned orderids can be passed to getMatchMultipleOrdersTx
-     * @param  {number}  gasLimit   return as many matches as it fits to gasLimit based on gas cost estimate.
+     * Fetches current OrderBook and returns as many matching orderIds (at current ETHFiat rate) as fits into the provided gas limit.
+     *  if no gasLimit provided then ethereumConnection.safeBlockGasLimit is used
+     * The returned matchingOrders can be passed to signAndSendMatchMultiple or matchMultiple functions
+     * @param  {number}  [gasLimit=EthereumConnection.safeBlockGasLimit]   return as many matches as it fits to gasLimit based on gas cost estimate.
      * @return {Promise}            pairs of matching order id , ordered by execution sequence
                                    { buyIds: [], sellIds: [], gasEstimate }
      */
-    async getMatchingOrders(gasLimit) {
+    async getMatchingOrders(gasLimit = this.ethereumConnection.safeBlockGasLimit) {
         const [orderBook, bn_ethFiatRate] = await Promise.all([
             this.fetchOrderBook(),
             this.rates.getBnEthFiatRate(this.currency)
