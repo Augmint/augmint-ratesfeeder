@@ -20,11 +20,7 @@ class Exchange extends Contract {
     }
 
     async connect(ethereumConnection, exchangeAddress) {
-        await super.connect(
-            ethereumConnection,
-            ExchangeArtifact,
-            exchangeAddress
-        );
+        await super.connect(ethereumConnection, ExchangeArtifact, exchangeAddress);
 
         this.rates = new Rates();
         await this.rates.connect(this.ethereumConnection);

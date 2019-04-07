@@ -45,11 +45,7 @@ class Rates extends Contract {
     }
 
     async connect(ethereumConnection, ratesAddress) {
-        return await super.connect(
-            ethereumConnection,
-            RatesArtifact,
-            ratesAddress
-        );
+        return await super.connect(ethereumConnection, RatesArtifact, ratesAddress);
     }
 }
 

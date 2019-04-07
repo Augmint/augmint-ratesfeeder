@@ -1,7 +1,7 @@
 {
-    "extends": ['eslint:recommended'],
+    "extends": ["eslint:recommended"],
     "parserOptions": {
-        "ecmaVersion": 2017,
+        "ecmaVersion": 2017
     },
     "env": {
         "mocha": true,
@@ -10,9 +10,9 @@
     },
     "rules": {
         "indent": ["warn", 4],
-        max-len: "off",
-        radix: "off",
-        no-unused-vars: "warn",
+        "max-len": "off",
+        "radix": "off",
+        "no-unused-vars": "warn",
         "no-console": "off"
     },
     "globals": {
@@ -20,5 +20,5 @@
         "assert": false,
         "artifacts": false,
         "contract": false
-  }
+    }
 }
