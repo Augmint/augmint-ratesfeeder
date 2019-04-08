@@ -1,10 +1,12 @@
 const assert = require("chai").assert;
 const EthereumConnection = require("./EthereumConnection.js");
-const ethereumConnection = new EthereumConnection();
 const sinon = require("sinon");
 
-describe("EthereumConnection", () => {
+let ethereumConnection;
+
+describe.only("EthereumConnection", () => {
     it("should connect & disconnect (local)", async () => {
+        ethereumConnection = new EthereumConnection();
         const connectedSpy = sinon.spy();
         const disconnectedSpy = sinon.spy();
         const connectionLostSpy = sinon.spy();
@@ -45,5 +47,10 @@ describe("EthereumConnection", () => {
         sinon.assert.calledOnce(disconnectedSpy);
     });
 
-    it("should reconnect after connection lost");
+    it("should get options as constructor parameters too", async () => {
+        const options = { ETHEREUM_CONNECTION_CHECK_INTERVAL: 100 };
+        ethereumConnection = new EthereumConnection(options);
+        assert(ethereumConnection.ETHEREUM_CONNECTION_CHECK_INTERVAL, options.checkInterval);
+    });
+
 });

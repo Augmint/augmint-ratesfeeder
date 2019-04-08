@@ -41,7 +41,7 @@ const ISLISTENING_TIMEOUT = 1000; // used at isConnected() for web3.eth.net.isLi
 const DEFAULT_CONNECTION_CHECK_INTERVAL = 10000;
 
 class EthereumConnection extends EventEmitter {
-    constructor() {
+    constructor(options = {}) {
         super();
 
         this.web3 = null;
@@ -49,15 +49,15 @@ class EthereumConnection extends EventEmitter {
 
         this.isStopping = false;
         this.isTryingToReconnect = false;
-
-        this.reconnectTimer = null;
         this.connectionCheckTimer = null;
 
         this.networkId = null;
         this.blockGasLimit = null;
 
-        this.CONNECTION_CHECK_INTERVAL =
-            process.env.ETHEREUM_CONNECTION_CHECK_INTERVAL || DEFAULT_CONNECTION_CHECK_INTERVAL;
+        this.ETHEREUM_CONNECTION_CHECK_INTERVAL =
+            options.ETHEREUM_CONNECTION_CHECK_INTERVAL ||
+            process.env.ETHEREUM_CONNECTION_CHECK_INTERVAL ||
+            DEFAULT_ETHEREUM_CONNECTION_CHECK_INTERVAL;
 
         setExitHandler(this._exit.bind(this), "ethereumConnection", CONNECTION_TIMEOUT + 1000);
 
@@ -71,7 +71,7 @@ class EthereumConnection extends EventEmitter {
         ? process.env.INFURA_PROJECT_ID.substring(0, 4) + "... rest hidden"
         : "not provided"
 }
-            ETHEREUM_CONNECTION_CHECK_INTERVAL: ${this.CONNECTION_CHECK_INTERVAL}
+            ETHEREUM_CONNECTION_CHECK_INTERVAL: ${this.ETHEREUM_CONNECTION_CHECK_INTERVAL}
             LOG_AS_SUCCESS_AFTER_N_CONFIRMATION: ${process.env.LOG_AS_SUCCESS_AFTER_N_CONFIRMATION}`
         );
 
@@ -161,8 +161,11 @@ class EthereumConnection extends EventEmitter {
 
         this.isTryingToReconnect = false;
 
-        if (this.CONNECTION_CHECK_INTERVAL > 0) {
-            this.connectionCheckTimer = setInterval(this._checkConnection.bind(this), this.CONNECTION_CHECK_INTERVAL);
+        if (this.ETHEREUM_CONNECTION_CHECK_INTERVAL > 0) {
+            this.connectionCheckTimer = setInterval(
+                this._checkConnection.bind(this),
+                this.ETHEREUM_CONNECTION_CHECK_INTERVAL
+            );
         }
 
         this.emit("connected", this);
