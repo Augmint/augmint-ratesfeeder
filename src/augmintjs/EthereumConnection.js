@@ -59,23 +59,23 @@ class EthereumConnection extends EventEmitter {
             process.env.ETHEREUM_CONNECTION_CHECK_INTERVAL ||
             DEFAULT_ETHEREUM_CONNECTION_CHECK_INTERVAL;
 
+        this.PROVIDER_TYPE = options.PROVIDER_TYPE || process.env.PROVIDER_TYPE;
+        this.PROVIDER_URL = options.PROVIDER_URL || process.env.PROVIDER_URL;
+        this.INFURA_PROJECT_ID = options.INFURA_PROJECT_ID || process.env.INFURA_PROJECT_ID || "";
+
         setExitHandler(this._exit.bind(this), "ethereumConnection", CONNECTION_TIMEOUT + 1000);
 
         log.info(
             // IMPORTANT: NEVER expose keys even not in logs!
             `** EthereumConnection loaded with settings:
-            PROVIDER_TYPE: ${process.env.PROVIDER_TYPE}
-            PROVIDER_URL: ${process.env.PROVIDER_URL}
+            PROVIDER_TYPE: ${this.PROVIDER_TYPE}
+            PROVIDER_URL: ${this.PROVIDER_URL}
             INFURA_PROJECT_ID: ${
-                process.env.INFURA_PROJECT_ID
-                    ? process.env.INFURA_PROJECT_ID.substring(0, 4) + "... rest hidden"
-                    : "not provided"
+                this.INFURA_PROJECT_ID ? this.INFURA_PROJECT_ID.substring(0, 4) + "... rest hidden" : "not provided"
             }
             ETHEREUM_CONNECTION_CHECK_INTERVAL: ${this.ETHEREUM_CONNECTION_CHECK_INTERVAL}
             LOG_AS_SUCCESS_AFTER_N_CONFIRMATION: ${process.env.LOG_AS_SUCCESS_AFTER_N_CONFIRMATION}`
         );
-
-        this.projectId = process.env.INFURA_PROJECT_ID || "";
     }
 
     async isConnected() {
@@ -94,19 +94,19 @@ class EthereumConnection extends EventEmitter {
     async connect() {
         this.isStopping = false;
 
-        switch (process.env.PROVIDER_TYPE) {
+        switch (this.PROVIDER_TYPE) {
             case "http": {
                 // provider.on is not a function with web3js beta 33 - maybe newer release? or shall we make it work without it?
-                //this.provider = new Web3.providers.HttpProvider(process.env.PROVIDER_URL + this.projectId);
+                //this.provider = new Web3.providers.HttpProvider(this.PROVIDER_URL + this.INFURA_PROJECT_ID);
                 //break;
-                throw new Error(process.env.PROVIDER_TYPE + " is not supported yet");
+                throw new Error(this.PROVIDER_TYPE + " is not supported yet");
             }
             case "websocket": {
-                this.provider = new Web3.providers.WebsocketProvider(process.env.PROVIDER_URL + this.projectId);
+                this.provider = new Web3.providers.WebsocketProvider(this.PROVIDER_URL + this.INFURA_PROJECT_ID);
                 break;
             }
             default:
-                throw new Error(process.env.PROVIDER_TYPE + " is not supported yet");
+                throw new Error(this.PROVIDER_TYPE + " is not supported yet");
         }
 
         this.provider.on("error", this.onProviderError.bind(this));
