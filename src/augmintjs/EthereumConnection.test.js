@@ -4,7 +4,7 @@ const sinon = require("sinon");
 
 let ethereumConnection;
 
-describe.only("EthereumConnection", () => {
+describe("EthereumConnection", () => {
     it("should connect & disconnect (local)", async () => {
         ethereumConnection = new EthereumConnection();
         const connectedSpy = sinon.spy();
@@ -53,4 +53,37 @@ describe.only("EthereumConnection", () => {
         assert(ethereumConnection.ETHEREUM_CONNECTION_CHECK_INTERVAL, options.checkInterval);
     });
 
+    it("should reconnect after connection lost", done => {
+        const connectionLostSpy = sinon.spy();
+        const disconnectedSpy = sinon.spy();
+        const checkInterval = 100;
+
+        ethereumConnection = new EthereumConnection({ ETHEREUM_CONNECTION_CHECK_INTERVAL: checkInterval });
+
+        const onConnectionLoss = async (event, eConnObj) => {
+            connectionLostSpy(event, eConnObj);
+
+            assert.equal(event.message, "checkConnection detected connectionloss");
+        };
+
+        const onConnected = async () => {
+            // this is only set up for the reconnection we expect
+            assert(await ethereumConnection.isConnected());
+            assert(connectionLostSpy.calledOnce);
+            assert(disconnectedSpy.calledOnce);
+            done();
+        };
+
+        ethereumConnection.on("disconnected", disconnectedSpy);
+        ethereumConnection.on("connectionLost", onConnectionLoss);
+
+        ethereumConnection.connect().then(async () => {
+            assert(await ethereumConnection.isConnected());
+
+            ethereumConnection.on("connected", onConnected); // we only setup connected here
+
+            ethereumConnection.web3.currentProvider.connection.close(); // simulate connection drop
+            assert(!(await ethereumConnection.isConnected()));
+        });
+    });
 });
