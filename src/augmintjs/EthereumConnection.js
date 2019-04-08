@@ -229,7 +229,7 @@ class EthereumConnection extends EventEmitter {
                 log.debug(
                     " EthereumConnection _checkConnection() - ethereumConnection.isConnected() returned false. trying to reconnect"
                 );
-                this.emit("connectionLost", { message: "checkConnection detected connectionloss" }, this); // triggering this so modules can handle event
+                this.emit("connectionLost", { reason: "checkConnection detected connectionloss" }, this); // triggering this so modules can handle event
                 this.wasConnected = false;
             }
 

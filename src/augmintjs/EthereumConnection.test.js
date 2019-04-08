@@ -74,8 +74,7 @@ describe("EthereumConnection", () => {
 
         const onConnectionLoss = async (event, eConnObj) => {
             connectionLostSpy(event, eConnObj);
-
-            assert.equal(event.message, "checkConnection detected connectionloss");
+                assert.equal(event.reason, "checkConnection detected connectionloss");
         };
 
         const onConnected = async () => {
