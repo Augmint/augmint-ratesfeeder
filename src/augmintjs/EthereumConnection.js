@@ -33,7 +33,7 @@ const EventEmitter = require("events");
 const promiseTimeout = require("src/augmintjs/helpers/promiseTimeout.js");
 const setExitHandler = require("src/augmintjs/helpers/sigintHandler.js");
 const Web3 = require("web3");
-const CONNECTION_TIMEOUT = 10000;
+const DEFAULT_ETHEREUM_CONNECTION_TIMEOUT = 10000;
 const CONNECTION_CLOSE_TIMEOUT = 10000;
 const ISLISTENING_TIMEOUT = 1000; // used at isConnected() for web3.eth.net.isListening() timeout. TODO: check if we still need with newer web3 or better way?
 
@@ -59,11 +59,16 @@ class EthereumConnection extends EventEmitter {
             process.env.ETHEREUM_CONNECTION_CHECK_INTERVAL ||
             DEFAULT_ETHEREUM_CONNECTION_CHECK_INTERVAL;
 
+        this.ETHEREUM_CONNECTION_TIMEOUT =
+            options.ETHEREUM_CONNECTION_TIMEOUT ||
+            process.env.ETHEREUM_CONNECTION_TIMEOUT ||
+            DEFAULT_ETHEREUM_CONNECTION_TIMEOUT;
+
         this.PROVIDER_TYPE = options.PROVIDER_TYPE || process.env.PROVIDER_TYPE;
         this.PROVIDER_URL = options.PROVIDER_URL || process.env.PROVIDER_URL;
         this.INFURA_PROJECT_ID = options.INFURA_PROJECT_ID || process.env.INFURA_PROJECT_ID || "";
 
-        setExitHandler(this._exit.bind(this), "ethereumConnection", CONNECTION_TIMEOUT + 1000);
+        setExitHandler(this._exit.bind(this), "ethereumConnection", this.CONNECTION_CLOSE_TIMEOUT + 1000);
 
         log.info(
             // IMPORTANT: NEVER expose keys even not in logs!
@@ -135,7 +140,7 @@ class EthereumConnection extends EventEmitter {
             this.once("providerError", tempOnproviderError); // this would be better: this.provider.once("end", e => { .. but web3js has a bug subscrbuing the same event multiple times.
         });
 
-        await promiseTimeout(CONNECTION_TIMEOUT, connectedEventPromise);
+        await promiseTimeout(this.ETHEREUM_CONNECTION_TIMEOUT, connectedEventPromise);
     }
 
     async onProviderConnect() {
@@ -235,7 +240,7 @@ class EthereumConnection extends EventEmitter {
     async _tryToReconnect() {
         if (!this.isStopping && !this.isTryingToReconnect) {
             // we won't try to reconnect if previous is still running (this.isTryingToReconnect)
-            //    i.e the prev connect() will errror or worst case timeout in CONNECTION_TIMEOUT ms and _checkConnection is called in every x ms
+            //    i.e the prev connect() will errror or worst case timeout in ETHEREUM_CONNECTION_TIMEOUT ms and _checkConnection is called in every x ms
             if (this.wasConnected) {
                 log.warn(
                     "  EthereumConnection connnection lost to web3 provider. Keep trying to reconnect. Logging of further warnings supressed until connection recovers"

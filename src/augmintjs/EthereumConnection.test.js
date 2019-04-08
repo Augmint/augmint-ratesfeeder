@@ -50,6 +50,7 @@ describe("EthereumConnection", () => {
     it("should get options as constructor parameters too", async () => {
         const options = {
             ETHEREUM_CONNECTION_CHECK_INTERVAL: 100,
+                ETHEREUM_CONNECTION_TIMEOUT: 1000,
             PROVIDER_TYPE: "test",
             PROVIDER_URL: "hoops",
             INFURA_PROJECT_ID: "bingo"
@@ -61,6 +62,7 @@ describe("EthereumConnection", () => {
         assert.equal(ethereumConnection.PROVIDER_TYPE, options.PROVIDER_TYPE);
         assert.equal(ethereumConnection.PROVIDER_URL, options.PROVIDER_URL);
         assert.equal(ethereumConnection.INFURA_PROJECT_ID, options.INFURA_PROJECT_ID);
+            assert.equal(ethereumConnection.ETHEREUM_CONNECTION_TIMEOUT, options.ETHEREUM_CONNECTION_TIMEOUT);
     });
 
     it("should reconnect after connection lost", done => {
