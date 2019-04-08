@@ -33,9 +33,11 @@ const EventEmitter = require("events");
 const promiseTimeout = require("src/augmintjs/helpers/promiseTimeout.js");
 const setExitHandler = require("src/augmintjs/helpers/sigintHandler.js");
 const Web3 = require("web3");
+
+// TODO: make these a DEFAULT_OPTIONS = {...} object and all options to EthereumConnection.options = { ...}
 const DEFAULT_ETHEREUM_CONNECTION_TIMEOUT = 10000;
-const CONNECTION_CLOSE_TIMEOUT = 10000;
-const ISLISTENING_TIMEOUT = 1000; // used at isConnected() for web3.eth.net.isListening() timeout. TODO: check if we still need with newer web3 or better way?
+const DEFAULT_ETHEREUM_CONNECTION_CLOSE_TIMEOUT = 10000;
+const DEFAULT_ETHEREUM_ISLISTENING_TIMEOUT = 1000; // used at isConnected() for web3.eth.net.isListening() timeout. TODO: check if we still need with newer web3 or better way?
 
 const DEFAULT_ETHEREUM_CONNECTION_CHECK_INTERVAL = 1000;
 
@@ -64,11 +66,21 @@ class EthereumConnection extends EventEmitter {
             process.env.ETHEREUM_CONNECTION_TIMEOUT ||
             DEFAULT_ETHEREUM_CONNECTION_TIMEOUT;
 
+        this.ETHEREUM_ISLISTENING_TIMEOUT =
+            options.ETHEREUM_ISLISTENING_TIMEOUT ||
+            process.env.ETHEREUM_ISLISTENING_TIMEOUT ||
+            DEFAULT_ETHEREUM_ISLISTENING_TIMEOUT;
+
+        this.ETHEREUM_CONNECTION_CLOSE_TIMEOUT =
+            options.ETHEREUM_CONNECTION_CLOSE_TIMEOUT ||
+            process.env.ETHEREUM_CONNECTION_CLOSE_TIMEOUT ||
+            DEFAULT_ETHEREUM_CONNECTION_CLOSE_TIMEOUT;
+
         this.PROVIDER_TYPE = options.PROVIDER_TYPE || process.env.PROVIDER_TYPE;
         this.PROVIDER_URL = options.PROVIDER_URL || process.env.PROVIDER_URL;
         this.INFURA_PROJECT_ID = options.INFURA_PROJECT_ID || process.env.INFURA_PROJECT_ID || "";
 
-        setExitHandler(this._exit.bind(this), "ethereumConnection", this.CONNECTION_CLOSE_TIMEOUT + 1000);
+        setExitHandler(this._exit.bind(this), "ethereumConnection", this.ETHEREUM_CONNECTION_CLOSE_TIMEOUT + 1000);
 
         log.info(
             // IMPORTANT: NEVER expose keys even not in logs!
@@ -86,11 +98,13 @@ class EthereumConnection extends EventEmitter {
     async isConnected() {
         let result = false;
         if (this.web3) {
-            result = await promiseTimeout(ISLISTENING_TIMEOUT, this.web3.eth.net.isListening()).catch(e => {
-                // Need timeout b/c sListening pending forever when called after a connection.close() TODO: test if needed in newer web3 than beta 33
+            result = await promiseTimeout(this.ETHEREUM_ISLISTENING_TIMEOUT, this.web3.eth.net.isListening()).catch(
+                e => {
+                    // Need timeout b/c listening pending forever when called after a connection.close() TODO: test if needed in newer web3 than beta 33
                 // log.debug("isConnected isListening ERROR (returning false)", e);
                 return false;
-            });
+                }
+            );
         }
 
         return result;
@@ -212,7 +226,7 @@ class EthereumConnection extends EventEmitter {
 
             await this.web3.currentProvider.connection.close();
 
-            await promiseTimeout(CONNECTION_CLOSE_TIMEOUT, disconnectedEventPromise);
+            await promiseTimeout(this.ETHEREUM_CONNECTION_CLOSE_TIMEOUT, disconnectedEventPromise);
         }
     }
 

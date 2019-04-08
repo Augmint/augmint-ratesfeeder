@@ -49,12 +49,16 @@ describe("EthereumConnection", () => {
 
     it("should get options as constructor parameters too", async () => {
         const options = {
-            ETHEREUM_CONNECTION_CHECK_INTERVAL: 100,
-                ETHEREUM_CONNECTION_TIMEOUT: 1000,
+                ETHEREUM_CONNECTION_CHECK_INTERVAL: 9999,
+                ETHEREUM_CONNECTION_TIMEOUT: 99,
+                ETHEREUM_ISLISTENING_TIMEOUT: 99,
+                ETHEREUM_CONNECTION_CLOSE_TIMEOUT: 99,
             PROVIDER_TYPE: "test",
             PROVIDER_URL: "hoops",
             INFURA_PROJECT_ID: "bingo"
         };
+
+            Object.assign(options, providerOptions);
 
         ethereumConnection = new EthereumConnection(options);
 
@@ -63,6 +67,10 @@ describe("EthereumConnection", () => {
         assert.equal(ethereumConnection.PROVIDER_URL, options.PROVIDER_URL);
         assert.equal(ethereumConnection.INFURA_PROJECT_ID, options.INFURA_PROJECT_ID);
             assert.equal(ethereumConnection.ETHEREUM_CONNECTION_TIMEOUT, options.ETHEREUM_CONNECTION_TIMEOUT);
+            assert.equal(
+                ethereumConnection.ETHEREUM_CONNECTION_CLOSE_TIMEOUT,
+                options.ETHEREUM_CONNECTION_CLOSE_TIMEOUT
+            );
     });
 
     it("should reconnect after connection lost", done => {
@@ -70,7 +78,13 @@ describe("EthereumConnection", () => {
         const disconnectedSpy = sinon.spy();
         const checkInterval = 100;
 
-        ethereumConnection = new EthereumConnection({ ETHEREUM_CONNECTION_CHECK_INTERVAL: checkInterval });
+            const options = {
+                ETHEREUM_CONNECTION_CHECK_INTERVAL: checkInterval,
+                ETHEREUM_CONNECTION_TIMEOUT: 10000
+            };
+            Object.assign(options, providerOptions);
+
+            ethereumConnection = new EthereumConnection(options);
 
         const onConnectionLoss = async (event, eConnObj) => {
             connectionLostSpy(event, eConnObj);
