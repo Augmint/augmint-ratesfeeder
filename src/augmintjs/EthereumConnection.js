@@ -4,12 +4,13 @@ const EventEmitter = require("events");
 const promiseTimeout = require("src/augmintjs/helpers/promiseTimeout.js");
 const setExitHandler = require("src/augmintjs/helpers/sigintHandler.js");
 const Web3 = require("web3");
-const RECONNECT_ATTEMPT_DELAY = 5000;
-const CONNECTION_TIMEOUT = 10000;
-const CONNECTION_CLOSE_TIMEOUT = 10000;
-const ISLISTENING_TIMEOUT = 1000; // used at isConnected() for web3.eth.net.isListening() timeout. TODO: check if we still need with newer web3 or better way?
 
-const DEFAULT_CONNECTION_CHECK_INTERVAL = 10000;
+// TODO: make these a DEFAULT_OPTIONS = {...} object and all options to EthereumConnection.options = { ...}
+const DEFAULT_ETHEREUM_CONNECTION_TIMEOUT = 10000;
+const DEFAULT_ETHEREUM_CONNECTION_CLOSE_TIMEOUT = 10000;
+const DEFAULT_ETHEREUM_ISLISTENING_TIMEOUT = 1000; // used at isConnected() for web3.eth.net.isListening() timeout. TODO: check if we still need with newer web3 or better way?
+const DEFAULT_ETHEREUM_CONNECTION_CHECK_INTERVAL = 1000;
+
 /**
  * Connect to Ethereum network via web3
  *  Maintains connection state, network properties
@@ -23,7 +24,7 @@ const DEFAULT_CONNECTION_CHECK_INTERVAL = 10000;
  * @extends EventEmitter
  */
 class EthereumConnection extends EventEmitter {
-    constructor() {
+    constructor(options = {}) {
         super();
         /**
          * @namespace
@@ -40,10 +41,9 @@ class EthereumConnection extends EventEmitter {
         this.web3 = null;
         this.provider = null;
 
-        this.isStopping = false;
-        this.isTryingToReconnect = false;
-
-        this.reconnectTimer = null;
+        this.isStopping = false; /** internal flag to avoid retrying connection when stop() called intentionally  */
+        this.isTryingToReconnect = false; /** internal flag to avoid  */
+        this.wasConnected = false; /** internal flag used to supress repeating connection lost logging */
         this.connectionCheckTimer = null;
 
         this.networkId = null;
@@ -52,26 +52,43 @@ class EthereumConnection extends EventEmitter {
 
         this.accounts = null;
 
-        this.CONNECTION_CHECK_INTERVAL =
-            process.env.ETHEREUM_CONNECTION_CHECK_INTERVAL || DEFAULT_CONNECTION_CHECK_INTERVAL;
+        this.ETHEREUM_CONNECTION_CHECK_INTERVAL =
+            options.ETHEREUM_CONNECTION_CHECK_INTERVAL ||
+            process.env.ETHEREUM_CONNECTION_CHECK_INTERVAL ||
+            DEFAULT_ETHEREUM_CONNECTION_CHECK_INTERVAL;
 
-        setExitHandler(this._exit.bind(this), "ethereumConnection", CONNECTION_TIMEOUT + 1000);
+        this.ETHEREUM_CONNECTION_TIMEOUT =
+            options.ETHEREUM_CONNECTION_TIMEOUT ||
+            process.env.ETHEREUM_CONNECTION_TIMEOUT ||
+            DEFAULT_ETHEREUM_CONNECTION_TIMEOUT;
+
+        this.ETHEREUM_ISLISTENING_TIMEOUT =
+            options.ETHEREUM_ISLISTENING_TIMEOUT ||
+            process.env.ETHEREUM_ISLISTENING_TIMEOUT ||
+            DEFAULT_ETHEREUM_ISLISTENING_TIMEOUT;
+
+        this.ETHEREUM_CONNECTION_CLOSE_TIMEOUT =
+            options.ETHEREUM_CONNECTION_CLOSE_TIMEOUT ||
+            process.env.ETHEREUM_CONNECTION_CLOSE_TIMEOUT ||
+            DEFAULT_ETHEREUM_CONNECTION_CLOSE_TIMEOUT;
+
+        this.PROVIDER_TYPE = options.PROVIDER_TYPE || process.env.PROVIDER_TYPE;
+        this.PROVIDER_URL = options.PROVIDER_URL || process.env.PROVIDER_URL;
+        this.INFURA_PROJECT_ID = options.INFURA_PROJECT_ID || process.env.INFURA_PROJECT_ID || "";
+
+        setExitHandler(this._exit.bind(this), "ethereumConnection", this.ETHEREUM_CONNECTION_CLOSE_TIMEOUT + 1000);
 
         log.info(
             // IMPORTANT: NEVER expose keys even not in logs!
             `** EthereumConnection loaded with settings:
-            PROVIDER_TYPE: ${process.env.PROVIDER_TYPE}
-            PROVIDER_URL: ${process.env.PROVIDER_URL}
+            PROVIDER_TYPE: ${this.PROVIDER_TYPE}
+            PROVIDER_URL: ${this.PROVIDER_URL}
             INFURA_PROJECT_ID: ${
-    process.env.INFURA_PROJECT_ID
-        ? process.env.INFURA_PROJECT_ID.substring(0, 4) + "... rest hidden"
-        : "not provided"
-}
-            ETHEREUM_CONNECTION_CHECK_INTERVAL: ${this.CONNECTION_CHECK_INTERVAL}
+                this.INFURA_PROJECT_ID ? this.INFURA_PROJECT_ID.substring(0, 4) + "... rest hidden" : "not provided"
+            }
+            ETHEREUM_CONNECTION_CHECK_INTERVAL: ${this.ETHEREUM_CONNECTION_CHECK_INTERVAL}
             LOG_AS_SUCCESS_AFTER_N_CONFIRMATION: ${process.env.LOG_AS_SUCCESS_AFTER_N_CONFIRMATION}`
         );
-
-        this.projectId = process.env.INFURA_PROJECT_ID || "";
     }
 
     /**
@@ -81,11 +98,13 @@ class EthereumConnection extends EventEmitter {
     async isConnected() {
         let result = false;
         if (this.web3) {
-            result = await promiseTimeout(ISLISTENING_TIMEOUT, this.web3.eth.net.isListening()).catch(e => {
-                // Need timeout b/c sListening pending forever when called after a connection.close() TODO: test if needed in newer web3 than beta 33
-                // log.debug("isConnected isListening ERROR (returning false)", e);
-                return false;
-            });
+            result = await promiseTimeout(this.ETHEREUM_ISLISTENING_TIMEOUT, this.web3.eth.net.isListening()).catch(
+                e => {
+                    // Need timeout b/c listening pending forever when called after a connection.close() TODO: test if needed in newer web3 than beta 33
+                    // log.debug("isConnected isListening ERROR (returning false)", e);
+                    return false;
+                }
+            );
         }
 
         return result;
@@ -103,22 +122,22 @@ class EthereumConnection extends EventEmitter {
     async connect() {
         this.isStopping = false;
 
-        switch (process.env.PROVIDER_TYPE) {
-        case "http": {
-            // provider.on is not a function with web3js beta 33 - maybe newer release? or shall we make it work without it?
-            //this.provider = new Web3.providers.HttpProvider(process.env.PROVIDER_URL + this.projectId);
-            //break;
-            throw new Error(process.env.PROVIDER_TYPE + " is not supported yet");
-        }
-        case "websocket": {
-            this.provider = new Web3.providers.WebsocketProvider(process.env.PROVIDER_URL + this.projectId);
-            break;
-        }
-        default:
-            throw new Error(process.env.PROVIDER_TYPE + " is not supported yet");
+        switch (this.PROVIDER_TYPE) {
+            case "http": {
+                // provider.on is not a function with web3js beta 33 - maybe newer release? or shall we make it work without it?
+                //this.provider = new Web3.providers.HttpProvider(this.PROVIDER_URL + this.INFURA_PROJECT_ID);
+                //break;
+                throw new Error(this.PROVIDER_TYPE + " is not supported yet");
+            }
+            case "websocket": {
+                this.provider = new Web3.providers.WebsocketProvider(this.PROVIDER_URL + this.INFURA_PROJECT_ID);
+                break;
+            }
+            default:
+                throw new Error(this.PROVIDER_TYPE + " is not supported yet");
         }
 
-        //this.provider.on("error", this.onProviderError.bind(this));
+        this.provider.on("error", this.onProviderError.bind(this));
         this.provider.on("end", this.onProviderEnd.bind(this));
         this.provider.on("connect", this.onProviderConnect.bind(this));
 
@@ -132,25 +151,37 @@ class EthereumConnection extends EventEmitter {
         const connectedEventPromise = new Promise((resolve, reject) => {
             const tempOnConnected = () => {
                 this.removeListener("providerError", tempOnproviderError);
+                this.removeListener("connectionLost", tempOnConnectionLost);
                 resolve(); // we wait for our custom setup to finish before we resolve connect()
             };
 
             const tempOnproviderError = () => {
                 this.removeListener("connected", tempOnConnected);
+                this.removeListener("connectionLost", tempOnConnectionLost);
                 reject(new Error("EthereumConnection connect failed. Provider error received instead of connect"));
             };
 
+            const tempOnConnectionLost = e => {
+                this.removeListener("connected", tempOnConnected);
+                this.removeListener("providerError", tempOnproviderError);
+                reject(
+                    new Error(
+                        `EthereumConnection connect failed. connectionLost received instead of connect. Code: ${
+                            e.code
+                        } Reason: ${e.reason}`
+                    )
+                );
+            };
+
+            this.once("connectionLost", tempOnConnectionLost);
             this.once("connected", tempOnConnected);
             this.once("providerError", tempOnproviderError); // this would be better: this.provider.once("end", e => { .. but web3js has a bug subscrbuing the same event multiple times.
         });
 
-        const ret = promiseTimeout(CONNECTION_TIMEOUT, connectedEventPromise);
-
-        return ret;
+        await promiseTimeout(this.ETHEREUM_CONNECTION_TIMEOUT, connectedEventPromise);
     }
 
     async onProviderConnect() {
-        clearTimeout(this.reconnectTimer);
         clearTimeout(this.connectionCheckTimer);
 
         let lastBlock;
@@ -163,15 +194,18 @@ class EthereumConnection extends EventEmitter {
         this.safeBlockGasLimit = Math.round(this.blockGasLimit * 0.9);
 
         if (this.isTryingToReconnect) {
+            this.isTryingToReconnect = false;
             log.warn(" EthereumConnection - provider connection recovered");
         } else {
             log.debug(" EthereumConnection - provider connected");
         }
 
-        this.isTryingToReconnect = false;
-
-        if (this.CONNECTION_CHECK_INTERVAL > 0) {
-            this.connectionCheckTimer = setInterval(this._checkConnection.bind(this), this.CONNECTION_CHECK_INTERVAL);
+        this.wasConnected = true;
+        if (this.ETHEREUM_CONNECTION_CHECK_INTERVAL > 0) {
+            this.connectionCheckTimer = setInterval(
+                this._checkConnection.bind(this),
+                this.ETHEREUM_CONNECTION_CHECK_INTERVAL
+            );
         }
 
         this.emit("connected", this);
@@ -184,33 +218,27 @@ class EthereumConnection extends EventEmitter {
             this.emit("disconnected", e, this);
         } else {
             if (!this.isTryingToReconnect && !this.isStopping) {
-                // Unexpected connection loss - _tryToReconnect() will try to reconnect in every RECONNECT_INTERVAL
+                // Unexpected connection loss - _checkConnection() will try to reconnect in every RECONNECT_INTERVAL
                 log.warn(" EthereumConnection - Websocket connection ended with code:", e.code, e.reason);
                 this.emit("connectionLost", e, this);
-                this._tryToReconnect();
             }
         }
     }
 
-    // This is triggered with every isConnected and interferes with reconnect attempts
-    //   Testing if it's needed at all (ie. Is connection status polling enough )
-    // onProviderError(event) {
-    //     //  Supressing repeating logs while reconnecting - common due to infura dropping web3 connection ca. in every 1-2 hours)
-    //     //       TODO: check if we should implement web3 keepalive pings or if newever versions on web3js are supporting it
-    //     if (!this.isTryingToReconnect && !this.isStopping) {
-    //         log.warn(
-    //             " EthereumConnection - provider error. Trying to reconnect. Logging provider errors are supressed until sucessfull reconnect."
-    //         );
-    //         this._tryToReconnect();
-    //     }
-    //
-    //     this.emit("providerError", event, this);
-    // }
+    onProviderError(event) {
+        // NB: This is triggered with every isConnected() call too when not connected
+        //  Supressing repeating logs while reconnecting - common due to infura dropping web3 connection ca. in every 1-2 hours)
+        //       TODO: check if we should implement web3 keepalive pings or if newever versions on web3js are supporting it
+        if (!this.isTryingToReconnect && !this.isStopping && this.wasConnected) {
+            this.emit("providerError", event, this);
+            log.warn(
+                " EthereumConnection - provider error. Trying to reconnect. Logging provider errors are supressed until sucessfull reconnect."
+            );
+        }
+    }
 
-    async stop(signal) {
+    async stop(/*signal*/) {
         this.isStopping = true;
-
-        clearTimeout(this.reconnectTimer);
         clearTimeout(this.connectionCheckTimer);
 
         if (this.web3 && (await this.isConnected())) {
@@ -222,7 +250,7 @@ class EthereumConnection extends EventEmitter {
 
             await this.web3.currentProvider.connection.close();
 
-            await promiseTimeout(CONNECTION_CLOSE_TIMEOUT, disconnectedEventPromise);
+            await promiseTimeout(this.ETHEREUM_CONNECTION_CLOSE_TIMEOUT, disconnectedEventPromise);
         }
     }
 
@@ -233,30 +261,36 @@ class EthereumConnection extends EventEmitter {
     async _checkConnection() {
         // subscriptions are starting not to arrive on Infura websocket after a while and provider end is not always triggered
         //  TODO: - check if newer versions of web3 (newer than beta33) are handling webscoket connection drops correclty
-        //        - make _tryToReconnect and _checkConnection one function and use only one timer?
-        if (!this.isStopping && !this.isTryingToReconnect && !(await this.isConnected())) {
-            log.debug(
-                " EthereumConnection _checkConnection() - ethereumConnection.isConnected() returned false. trying to reconnect"
-            );
-            this.emit("connectionLost", { message: "checkConnection detected connectionloss" }, this); // triggering this so modules can handle event
+        if (!this.isStopping && !(await this.isConnected())) {
+            if (this.wasConnected) {
+                // emit connectionLost (and log) only first reconnect attempt
+                log.debug(
+                    " EthereumConnection _checkConnection() - ethereumConnection.isConnected() returned false. trying to reconnect"
+                );
+                this.emit("connectionLost", { reason: "checkConnection detected connectionloss" }, this); // triggering this so modules can handle event
+                this.wasConnected = false;
+            }
+
             this._tryToReconnect();
         }
     }
 
     async _tryToReconnect() {
-        const isFirstTry = !this.isTryingToReconnect;
-        this.isTryingToReconnect = true; // isConnected trigger Provider error which calls _tryToReconnect so we need to flag it before
-        if (!this.isStopping && !(await this.isConnected())) {
-            if (isFirstTry) {
+        if (!this.isStopping && !this.isTryingToReconnect) {
+            // we won't try to reconnect if previous is still running (this.isTryingToReconnect)
+            //    i.e the prev connect() will errror or worst case timeout in ETHEREUM_CONNECTION_TIMEOUT ms and _checkConnection is called in every x ms
+            if (this.wasConnected) {
                 log.warn(
                     "  EthereumConnection connnection lost to web3 provider. Keep trying to reconnect. Logging of further warnings supressed until connection recovers"
                 );
             }
+
+            this.isTryingToReconnect = true;
             await this.connect().catch(e => {
-                // we ignore error and schedule next attempt
+                // we ignore error and wait for next attempt to be triggered in ETHEREUM_CONNECTION_CHECK_INTERVAL ms
                 log.debug(" EthereumConnection reconnection attempt error:", e);
-                this.reconnectTimer = setTimeout(this._tryToReconnect.bind(this), RECONNECT_ATTEMPT_DELAY);
             });
+            this.isTryingToReconnect = false;
         }
     }
 }
