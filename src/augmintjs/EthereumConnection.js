@@ -101,8 +101,8 @@ class EthereumConnection extends EventEmitter {
             result = await promiseTimeout(this.ETHEREUM_ISLISTENING_TIMEOUT, this.web3.eth.net.isListening()).catch(
                 e => {
                     // Need timeout b/c listening pending forever when called after a connection.close() TODO: test if needed in newer web3 than beta 33
-                // log.debug("isConnected isListening ERROR (returning false)", e);
-                return false;
+                    // log.debug("isConnected isListening ERROR (returning false)", e);
+                    return false;
                 }
             );
         }
@@ -142,14 +142,29 @@ class EthereumConnection extends EventEmitter {
         const connectedEventPromise = new Promise((resolve, reject) => {
             const tempOnConnected = () => {
                 this.removeListener("providerError", tempOnproviderError);
+                this.removeListener("connectionLost", tempOnConnectionLost);
                 resolve(); // we wait for our custom setup to finish before we resolve connect()
             };
 
             const tempOnproviderError = () => {
                 this.removeListener("connected", tempOnConnected);
+                this.removeListener("connectionLost", tempOnConnectionLost);
                 reject(new Error("EthereumConnection connect failed. Provider error received instead of connect"));
             };
 
+            const tempOnConnectionLost = e => {
+                this.removeListener("connected", tempOnConnected);
+                this.removeListener("providerError", tempOnproviderError);
+                reject(
+                    new Error(
+                        `EthereumConnection connect failed. connectionLost received instead of connect. Code: ${
+                            e.code
+                        } Reason: ${e.reason}`
+                    )
+                );
+            };
+
+            this.once("connectionLost", tempOnConnectionLost);
             this.once("connected", tempOnConnected);
             this.once("providerError", tempOnproviderError); // this would be better: this.provider.once("end", e => { .. but web3js has a bug subscrbuing the same event multiple times.
         });
