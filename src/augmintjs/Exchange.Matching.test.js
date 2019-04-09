@@ -3,11 +3,11 @@ const exchange = new (require("./Exchange.js"))();
 const BigNumber = require("bignumber.js");
 const { cost } = require("./gas.js");
 
-describe("matchMultipleOrdersTx", () => {
+describe("getMatchMultipleOrdersTx", () => {
     it("should match orders on chain");
 });
 
-describe("getMatchingOrders", () => {
+describe("calculateMatchingOrders", () => {
     const ETHEUR_RATE = new BigNumber(500);
     const BN_ONE = new BigNumber(1);
     const GAS_LIMIT = Number.MAX_SAFE_INTEGER;

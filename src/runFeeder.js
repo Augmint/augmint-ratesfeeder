@@ -62,6 +62,7 @@ ethereumConnection
     });
 
 /********* EthereumConnection event handlers (for logging)*****************/
+/* eslint-disable no-unused-vars */
 function onNewOrder(event, matchMaker) {
     log.debug("New order id:", event.returnValues.orderId);
 }

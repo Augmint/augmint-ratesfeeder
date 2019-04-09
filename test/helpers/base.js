@@ -1,46 +1,64 @@
 /* Generic test helper functions */
-const EthereumConnection = require("src/augmintjs/EthereumConnection.js");
-const RatesFeeder = require("src/RatesFeeder.js");
-const ethereumConnection = new EthereumConnection();
-let ratesFeeder = null;
-
 const assert = require("chai").assert;
 
 module.exports = {
-    get web3() {
-        return ethereumConnection.web3;
-    },
-    ratesFeeder: async function() {
-        if (!(await ethereumConnection.isConnected())) {
-            await ethereumConnection.connect();
-        }
-
-        if (!ratesFeeder) {
-            ratesFeeder = new RatesFeeder(ethereumConnection, []);
-        }
-
-        if (!ratesFeeder.isInitialised) {
-            await ratesFeeder.init();
-        }
-        return ratesFeeder;
-    },
+    takeSnapshot,
+    revertSnapshot,
     getEvents,
     assertEvent,
     assertNoEvents
 };
 
+function takeSnapshot(web3) {
+    //dirty hack for web3@1.0.0 support for localhost testrpc, see https://github.com/trufflesuite/truffle-contract/issues/56#issuecomment-331084530
+    if (typeof web3.currentProvider.sendAsync !== "function") {
+        web3.currentProvider.sendAsync = function() {
+            return web3.currentProvider.send.apply(web3.currentProvider, arguments);
+        };
+    }
+
+    return new Promise(function(resolve, reject) {
+        web3.currentProvider.sendAsync(
+            {
+                method: "evm_snapshot",
+                params: [],
+                jsonrpc: "2.0",
+                id: new Date().getTime()
+            },
+            function(error, res) {
+                if (error) {
+                    reject(new Error("Can't take snapshot with web3\n" + error));
+                } else {
+                    resolve(res.result);
+                }
+            }
+        );
+    });
+}
+
+function revertSnapshot(web3, snapshotId) {
+    return new Promise(function(resolve, reject) {
+        web3.currentProvider.sendAsync(
+            {
+                method: "evm_revert",
+                params: [snapshotId],
+                jsonrpc: "2.0",
+                id: new Date().getTime()
+            },
+            function(error, res) {
+                if (error) {
+                    // TODO: this error is not bubbling up to truffle test run :/
+                    reject(new Error("Can't revert snapshot with web3. snapshotId: " + snapshotId + "\n" + error));
+                } else {
+                    resolve(res);
+                }
+            }
+        );
+    });
+}
+
 function getEvents(contractInstance, eventName) {
     return contractInstance.getPastEvents(eventName);
-    // console.log(contractInstance.events)
-    // return new Promise((resolve, reject) => {
-    //     contractInstance.events[eventName]().get((err, res) => {
-    //         if (err) {
-    //             return reject(err);
-    //         }
-    //
-    //         resolve(res);
-    //     });
-    // });
 }
 
 async function assertEvent(contractInstance, eventName, _expectedArgs) {

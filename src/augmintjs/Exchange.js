@@ -1,99 +1,78 @@
-/**********************************************************************************
-Exchange contract class
-
-
-Methods:
-    async getMatchingOrders(web3, exchangeInstance, bn_ethFiatRate, gasLimit)
-        Fetches current OrderBook and returns as many matching orderIds as fits into the provided gas limit.
-        The returned orderids can be passed to matchMultipleOrdersTx
-
-        Input:
-            web3: an already connected web3 instance
-            exchangeInstance: a web3 Contract instance pointing to the Exchange contract
-            bn_ethFiatRate:
-                current ETHEUR rate in bignumber.js format
-            gasLimit:
-                return as many matches as it fits to gasLimit based on gas cost estimate.
-
-        Returns: pairs of matching order id , ordered by execution sequence
-                { buyIds: [], sellIds: [], gasEstimate }
-
-    async fetchOrderBook(web3, exchangeInstance)
-        Fetches, parses and orders the current, full orderBook from Exchange
-
-        Input:
-            web3: an already connected web3js instance
-            exchangeInstance: a web3 Contract instance pointing to the Exchange contract
-
-        Returns: the current, ordered orderBook in the format of:
-            { buyOrders: [{id, maker, direction, bn_amount (in Wei), bn_ethAmount, amount (in eth), bn_price (in PPM)],
-              sellOrders: [{id, maker, direction, bn_amount (wtihout decimals), amount (in AEUR), bn_price (in PPM)}]
-            }
-
-    matchMultipleOrdersTx(exchangeInstance, buyIds, sellIds)
-        Returns a web3 transaction to match the passed buyIds and sellIds. Call .send() on the returned tx.
-
-        Input:
-            exchangeInstance: a web3 Contract instance pointing to the Exchange contract
-            buyIds: array with a list of BUY order IDs (ordered)
-            sellIds: array with a list of SELL order IDs (ordered)
-
-        Returns: web3 transaction which can be executed with .send({account, gas})
-
-
-    isOrderBetter(o1, o2)
-
-    calculateMatchingOrders(buyOrders, sellOrders, gasLimit)
-*********************************************************************************/
-
 const BigNumber = require("bignumber.js");
 const { cost } = require("./gas.js");
 const { constants } = require("./constants.js");
-const contractConnection = require("src/augmintjs/helpers/contractConnection.js");
 const Contract = require("src/augmintjs/Contract.js");
-const ExchangeArtifact = require("src/augmintjs/abiniser/abis/Exchange_ABI_d3e7f8a261b756f9c40da097608b21cd.json");
-const RatesArtifact = require("src/augmintjs/abiniser/abis/Rates_ABI_73a17ebb0acc71773371c6a8e1c8e6ce.json");
-const AugmintTokenArtifact = require("src/augmintjs/abiniser/abis/TokenAEur_ABI_2ea91d34a7bfefc8f38ef0e8a5ae24a5.json");
 
+const AugmintToken = require("src/augmintjs/AugmintToken.js");
+const Rates = require("src/augmintjs/Rates.js");
+
+const ExchangeArtifact = require("src/augmintjs/abiniser/abis/Exchange_ABI_d3e7f8a261b756f9c40da097608b21cd.json");
+
+/**
+ * Augmint Exchange contract class
+ * @class Exchange
+ * @extends Contract
+ */
 class Exchange extends Contract {
     constructor() {
         super();
-        this.ratesInstance = null;
-        this.tokenInstance = null;
+        this.rates = null;
+        this.augmintToken = null;
+        this.tokenPeggedSymbol = null; /** fiat symbol this exchange is linked to (via Exchange.augmintToken) */
+        this.tokenSymbol = null; /** token symbol this exchange contract instance is linked to  */
     }
 
     async connect(ethereumConnection, exchangeAddress) {
-        await super.connect(
-            ethereumConnection,
-            ExchangeArtifact,
-            exchangeAddress
-        );
+        await super.connect(ethereumConnection, ExchangeArtifact, exchangeAddress);
 
-        this.ratesInstance = contractConnection.connectLatest(this.ethereumConnection, RatesArtifact);
-        this.tokenInstance = contractConnection.connectLatest(this.ethereumConnection, AugmintTokenArtifact);
+        this.rates = new Rates();
+        await this.rates.connect(this.ethereumConnection);
 
         const [tokenAddressAtExchange, ratesAddressAtExchange] = await Promise.all([
             this.instance.methods.augmintToken().call(),
             this.instance.methods.rates().call()
         ]);
 
-        if (ratesAddressAtExchange !== this.ratesInstance._address) {
+        if (ratesAddressAtExchange !== this.rates.address) {
             throw new Error(
-                " Exchange: latest Rates contract deployment address with provided ABI doesn't match rates contract address at deployed Exchange contract's"
+                `Exchange: latest Rates contract deployment address ${
+                    this.rates.address
+                } for provided ABI doesn't match rates contract address ${ratesAddressAtExchange} at deployed Exchange contract`
             );
         }
 
-        if (tokenAddressAtExchange !== this.tokenInstance._address) {
+        this.augmintToken = new AugmintToken();
+        await this.augmintToken.connect(this.ethereumConnection);
+
+        if (tokenAddressAtExchange !== this.augmintToken.address) {
             throw new Error(
-                " Exchange: latest AugmintToken contract deployment address with provided ABI doesn't match AugmintToken contract address at deployed Exchange contract's"
+                `Exchange: latest AugmintToken contract deployment address at ${
+                    this.augmintToken.address
+                }  doesn't match AugmintToken contract address set at latest deployed Exchange contract: ${tokenAddressAtExchange}.
+                Connecting to legacy Exchanges is not supported yet`
             );
         }
+
+        this.tokenPeggedSymbol = this.augmintToken.peggedSymbol;
+        this.tokenSymbol = this.augmintToken.symbol;
 
         return this.instance;
     }
 
-    async getMatchingOrders(bn_ethFiatRate, gasLimit) {
-        const orderBook = await this.fetchOrderBook();
+    /**
+     * Fetches current OrderBook and returns as many matching orderIds (at current ETHFiat rate) as fits into the provided gas limit.
+     *  if no gasLimit provided then ethereumConnection.safeBlockGasLimit is used
+     * The returned matchingOrders can be passed to signAndSendMatchMultiple or matchMultiple functions
+     * @param  {number}  [gasLimit=EthereumConnection.safeBlockGasLimit]   return as many matches as it fits to gasLimit based on gas cost estimate.
+     * @return {Promise}            pairs of matching order id , ordered by execution sequence
+                                   { buyIds: [], sellIds: [], gasEstimate }
+     */
+    async getMatchingOrders(gasLimit = this.ethereumConnection.safeBlockGasLimit) {
+        const [orderBook, bn_ethFiatRate] = await Promise.all([
+            this.fetchOrderBook(),
+            this.rates.getBnEthFiatRate(this.tokenPeggedSymbol)
+        ]);
+
         const matches = this.calculateMatchingOrders(
             orderBook.buyOrders,
             orderBook.sellOrders,
@@ -104,6 +83,12 @@ class Exchange extends Contract {
         return matches;
     }
 
+    /**
+     * Fetches, parses and orders the current, full orderBook from Exchange
+     * @return {Promise} the current, ordered orderBook in the format of:
+     *                  { buyOrders: [{id, maker, direction, bn_amount (in Wei), bn_ethAmount, amount (in eth), bn_price (in PPM)],
+     *                  sellOrders: [{id, maker, direction, bn_amount (without decimals), amount (in AEUR), bn_price (in PPM)}]
+     */
     async fetchOrderBook() {
         // TODO: handle when order changes while iterating
         const isLegacyExchangeContract = typeof this.instance.methods.CHUNK_SIZE === "function";
@@ -158,7 +143,7 @@ class Exchange extends Contract {
 
         // result format: [id, maker, price, amount]
         const orders = result.reduce(
-            (res, order, idx) => {
+            (res, order) => {
                 const bn_amount = new BigNumber(order[3]);
                 if (!bn_amount.eq(0)) {
                     const parsed = {
@@ -178,7 +163,7 @@ class Exchange extends Contract {
                         res.buyOrders.push(parsed);
                     } else {
                         parsed.direction = constants.TOKEN_SELL;
-                        parsed.amount = parseFloat((parsed.bn_amount / constants.DECIMALS_DIV).toFixed(2));
+                        parsed.amount = parseFloat((parsed.bn_amount / this.augmintToken.decimalsDiv).toFixed(2));
 
                         res.sellOrders.push(parsed);
                     }
@@ -201,7 +186,57 @@ class Exchange extends Contract {
         return o1.price * dir > o2.price * dir || (o1.price === o2.price && o1.id > o2.id) ? 1 : -1;
     }
 
-    async matchMultipleOrdersTx(buyIds, sellIds) {
+    /**
+     * Sends a matchMultipleOrders transaction
+     * Intended to use when account wallet is available (e.g. MetamMask)  * @param {string} account    tx sender account
+     * @param {string} account    tx sender account
+     * @param  {*} matchingOrders
+     * @returns {Promise}     A web3.js Promi event object sent to the network. Resolves when mined and you can subscribe to events, eg. .on("confirmation")
+     * @memberof Exchange
+     */
+    async matchMultipleOrders(account, matchingOrders) {
+        const matchMultipleOrdersTx = this.getMatchMultipleOrdersTx(matchingOrders.buyIds, matchingOrders.sellIds);
+
+        return matchMultipleOrdersTx.send({ from: account, gas: matchingOrders.gasEstimate });
+    }
+
+    /**
+     * Signs a matchMultipleOrders transaction with a private key and sends it (with web3.js sendSignedTransaction)     *
+     * Intended to use when private key is available, e.g. backend services
+     * @param  {string} account     tx signer ethereum account
+     * @param  {string} privateKey  Private key of the Ethereum account to sign the tx with. Include leading 0x
+     * @param  {object} matchingOrders    Returned by getMatchingOrders in format of {buyIds:[], sellIds: [], gasEstimate}
+     * @return {Promise}           A web3.js Promi event object sent to the network. Resolves when mined and you can subscribe to events, eg. .on("confirmation")
+     * @memberof Exchange
+     */
+    async signAndSendMatchMultipleOrders(account, privateKey, matchingOrders) {
+        const matchMultipleOrdersTx = this.getMatchMultipleOrdersTx(matchingOrders.buyIds, matchingOrders.sellIds);
+
+        const encodedABI = matchMultipleOrdersTx.encodeABI();
+
+        const txToSign = {
+            from: account,
+            to: this.address,
+            gasLimit: matchingOrders.gasEstimate,
+            data: encodedABI
+        };
+
+        const signedTx = await this.web3.eth.accounts.signTransaction(
+            txToSign,
+            process.env.MATCHMAKER_ETHEREUM_PRIVATE_KEY
+        );
+
+        return this.web3.eth.sendSignedTransaction(signedTx.rawTransaction);
+    }
+
+    /**
+     * Returns a web3 transaction to match the passed buyIds and sellIds. Call .send() or sign it on the returned tx.
+     * @param  {array} buyIds   array with a list of BUY order IDs (ordered)
+     * @param  {array} sellIds  array with a list of SELL order IDs (ordered)
+     * @return {Promise}         web3 transaction which can be executed with .send({account, gas})
+     * @memberof Exchange
+     */
+    getMatchMultipleOrdersTx(buyIds, sellIds) {
         if (sellIds.length === 0 || sellIds.length !== buyIds.length) {
             throw new Error("invalid buyIds/sellIds recevied - no ids or the the params are not equal.");
         }
@@ -211,22 +246,14 @@ class Exchange extends Contract {
         return tx;
     }
 
-    /*********************************************************************************
-calculateMatchingOrders(_buyOrders, _sellOrders, bn_ethFiatRate, gasLimit)
-    returns matching pairs from ordered ordebook for sending in Exchange.matchMultipleOrders ethereum tx
-    input:
-        buyOrders[ { id, price, bn_ethAmount }]
-            must be ordered by price descending then by id ascending
-        sellOrders[ {id, price, amount }]
-            must be ordered by price ascending then by id ascending
-        bn_ethFiatRate:
-            current ETHEUR rate
-        gasLimit:
-            return as many matches as it fits to gasLimit based on gas cost estimate.
-
-    returns: pairs of matching order id , ordered by execution sequence
-        { buyIds: [], sellIds: [], gasEstimate }
-*********************************************************************************/
+    /**
+     * calculate matching pairs from ordered ordebook for sending in Exchange.matchMultipleOrders ethereum tx
+     * @param  {object} _buyOrders     must be ordered by price descending then by id ascending
+     * @param  {array} _sellOrders    must be ordered by price ascending then by id ascending
+     * @param  {BigNumber} bn_ethFiatRate current ETHFiat rate to use for calculation
+     * @param  {number} gasLimit       return as many matches as it fits to gasLimit based on gas cost estimate.
+     * @return {object}                pairs of matching order id , ordered by execution sequence { buyIds: [], sellIds: [], gasEstimate }
+     */
     calculateMatchingOrders(_buyOrders, _sellOrders, bn_ethFiatRate, gasLimit) {
         const sellIds = [];
         const buyIds = [];
