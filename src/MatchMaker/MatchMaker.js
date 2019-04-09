@@ -7,13 +7,10 @@ emmitted events:
 require("src/augmintjs/helpers/env.js");
 const log = require("src/augmintjs/helpers/log.js")("MatchMaker");
 const EventEmitter = require("events");
-const BigNumber = require("bignumber.js");
 const promiseTimeout = require("src/augmintjs/helpers/promiseTimeout.js");
-const { constants } = require("src/augmintjs/constants.js");
+
 const setExitHandler = require("src/augmintjs/helpers/sigintHandler.js");
 const Exchange = require("src/augmintjs/Exchange.js");
-
-const CCY = "EUR"; // only EUR is suported by MatchMaker ATM
 
 class MatchMaker extends EventEmitter {
     constructor(ethereumConnection) {
@@ -58,8 +55,8 @@ class MatchMaker extends EventEmitter {
             `** MatchMaker started with settings:
             MATCHMAKER_ETHEREUM_ACCOUNT: ${process.env.MATCHMAKER_ETHEREUM_ACCOUNT}
             MATCHMAKER_ETHEREUM_PRIVATE_KEY: ${
-    process.env.MATCHMAKER_ETHEREUM_PRIVATE_KEY ? "[secret]" : "not provided"
-}
+                process.env.MATCHMAKER_ETHEREUM_PRIVATE_KEY ? "[secret]" : "not provided"
+            }
             Exchange contract: ${this.exchange.address}`
         );
     }
@@ -106,44 +103,22 @@ class MatchMaker extends EventEmitter {
     }
 
     async _checkAndMatchOrders() {
-        const bn_ethFiatRate = new BigNumber(
-            (await this.exchange.ratesInstance.methods
-                .convertFromWei(this.web3.utils.asciiToHex(CCY), constants.ONE_ETH_IN_WEI.toString())
-                .call()) / constants.DECIMALS_DIV
-        );
-
-        const matchingOrders = await this.exchange.getMatchingOrders(
-            bn_ethFiatRate,
-            this.ethereumConnection.safeBlockGasLimit
-        );
+        const matchingOrders = await this.exchange.getMatchingOrders(); // default gaslimit ethereumConnection.safeBlockGasLimit
 
         if (matchingOrders.buyIds.length > 0) {
-            const matchMultipleOrdersTx = await this.exchange.matchMultipleOrdersTx(
-                matchingOrders.buyIds,
-                matchingOrders.sellIds
+            const nonce = await this.ethereumConnection.getAccountNonce(this.account);
+
+            const tx = await this.exchange.signAndSendMatchMultipleOrders(
+                this.account,
+                process.env.MATCHMAKER_ETHEREUM_PRIVATE_KEY,
+                matchingOrders
             );
-
-            const encodedABI = matchMultipleOrdersTx.encodeABI();
-
-            const txToSign = {
-                from: this.account,
-                to: this.exchange.address,
-                gasLimit: matchingOrders.gasEstimate,
-                data: encodedABI
-            };
-
-            const [signedTx, nonce] = await Promise.all([
-                this.web3.eth.accounts.signTransaction(txToSign, process.env.MATCHMAKER_ETHEREUM_PRIVATE_KEY),
-                this.web3.eth.getTransactionCount(this.account)
-            ]);
 
             log.log(
                 `==> checkAndMatchOrders() sending matchMultipleOrdersTx. nonce: ${nonce} matching Orders: ${
                     matchingOrders.sellIds.length
                 }`
             );
-
-            const tx = this.web3.eth.sendSignedTransaction(signedTx.rawTransaction, { from: this.account });
 
             const receipt = await tx
                 .once("transactionHash", hash => {

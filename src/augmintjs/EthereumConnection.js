@@ -1,32 +1,3 @@
-/*********************************************************************************
-  Connect to Ethereum network via web3
-  maintains connection state, network properties
-  reconnects in case of connection dropped. NB: each consumer has to resubscribe atm after reconnection (on "connected" event)
-
-  usage:
-  ethereumConnection = new EthereumConnection();
-  await ethereumConnection.connect().catch( e => {..} )
-
-  Methods:
-    async isConnected() ==> web3.eth.net.isListening()
-
-  Emits:
-     connected(EthereumConnection)
-     disconnected(EthereumConnection, error, EthereumConnection)  NB: it's only error code 1000, normal end
-     connectionLost(error, EthereumConnection)
-
-  Properties:
-     web3
-     provider (=== web3.currentProvider)
-     accounts: array of available accounts received from web3.eth.getAccounts();
-     blockGasLimit
-     safeBlockGasLimit: as blockGasLimit read on startup and it can change later we provide a "safe" estimate
-     isTryingToReconnect
-     isStopping - when shutting down because stop() has been called (e.g. SIGTERM/SIGSTOP/SIGINT  )
-
-
-********************************************************************************/
-
 require("src/augmintjs/helpers/env.js");
 const log = require("src/augmintjs/helpers/log.js")("EthereumConnection");
 const EventEmitter = require("events");
@@ -38,13 +9,35 @@ const Web3 = require("web3");
 const DEFAULT_ETHEREUM_CONNECTION_TIMEOUT = 10000;
 const DEFAULT_ETHEREUM_CONNECTION_CLOSE_TIMEOUT = 10000;
 const DEFAULT_ETHEREUM_ISLISTENING_TIMEOUT = 1000; // used at isConnected() for web3.eth.net.isListening() timeout. TODO: check if we still need with newer web3 or better way?
-
 const DEFAULT_ETHEREUM_CONNECTION_CHECK_INTERVAL = 1000;
 
+/**
+ * Connect to Ethereum network via web3
+ *  Maintains connection state, network properties
+ *  Reconnects in case of connection dropped. NB: each consumer has to resubscribe atm after reconnection (on "connected" event)
+ *  Usage:
+ *      const ethereumConnection = new EthereumConnection();
+ *      await ethereumConnection.connect().catch( e => {..} )
+ * @fires   EthereumConnection#connected
+ * @fires   EthereumConnection#disconnected NB: it's only in case of error code 1000, normal end
+ * @fires   EthereumConnection#connectionLost
+ * @extends EventEmitter
+ */
 class EthereumConnection extends EventEmitter {
     constructor(options = {}) {
         super();
-
+        /**
+         * @namespace
+         * @prop {object}   web3    web3.js object
+         * @prop {object}   provider    shorthand for web3.currentProvider
+         * @prop {boolean}  isStopping  indicates if the connection is being shut down (ie. via stop())
+         * @prop {number}   networkId
+         * @prop {array}    accounts       array of available accounts received from web3.eth.getAccounts()
+         * @prop {number}   blockGasLimit    the block gas limit when the connection was estabilished
+         * @prop {number}   safeBlockGasLimit  as blockGasLimit read on startup and it can change later so we provide a "safe" estimate which is 90% of the gasLimit
+         * @prop {boolean}  isStopping      true when shutting down because stop() has been called (e.g. SIGTERM/SIGSTOP/SIGINT
+         * @prop {boolean}  isTryingToReconnect  true while trying to reconnect because of connection loss detected
+         */
         this.web3 = null;
         this.provider = null;
 
@@ -55,6 +48,9 @@ class EthereumConnection extends EventEmitter {
 
         this.networkId = null;
         this.blockGasLimit = null;
+        this.safeBlockGasLimit = null;
+
+        this.accounts = null;
 
         this.ETHEREUM_CONNECTION_CHECK_INTERVAL =
             options.ETHEREUM_CONNECTION_CHECK_INTERVAL ||
@@ -95,6 +91,10 @@ class EthereumConnection extends EventEmitter {
         );
     }
 
+    /**
+     * Get connection state
+     * @return {Promise} result from  web3.eth.net.isListening()
+     */
     async isConnected() {
         let result = false;
         if (this.web3) {
@@ -108,6 +108,15 @@ class EthereumConnection extends EventEmitter {
         }
 
         return result;
+    }
+
+    /**
+     *  next nonce for the account
+     * @param  {string}  account Ethereum account with leading 0x
+     * @return {Promise}         The result web3.eth.getTransactionCount(account) which is essentially the nonce for the next tx
+     */
+    async getAccountNonce(account) {
+        return await this.web3.eth.getTransactionCount(account);
     }
 
     async connect() {
