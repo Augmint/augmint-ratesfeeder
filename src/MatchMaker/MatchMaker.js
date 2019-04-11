@@ -4,13 +4,13 @@ calls matchMultiple tx every time a new Order event received
 emmitted events:
 
 */
-require("src/augmintjs/helpers/env.js");
-const log = require("src/augmintjs/helpers/log.js")("MatchMaker");
+require("@augmint/js/src/helpers/env.js");
+const log = require("@augmint/js/src/helpers/log.js")("MatchMaker");
 const EventEmitter = require("events");
-const promiseTimeout = require("src/augmintjs/helpers/promiseTimeout.js");
+const promiseTimeout = require("@augmint/js/src/helpers/promiseTimeout.js");
 
-const setExitHandler = require("src/augmintjs/helpers/sigintHandler.js");
-const Exchange = require("src/augmintjs/Exchange.js");
+const setExitHandler = require("@augmint/js/src/helpers/sigintHandler.js");
+const Exchange = require("@augmint/js/src/Exchange.js");
 
 class MatchMaker extends EventEmitter {
     constructor(ethereumConnection) {

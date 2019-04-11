@@ -1,6 +1,6 @@
-require("src/augmintjs/helpers/env.js");
-const log = require("src/augmintjs/helpers/log.js")("runFeeder");
-const EthereumConnection = require("src/augmintjs/EthereumConnection.js");
+require("@augmint/js/src/helpers/env.js");
+const log = require("@augmint/js/src/helpers/log.js")("runFeeder");
+const EthereumConnection = require("@augmint/js/src/EthereumConnection.js");
 const RatesFeeder = require("src/RatesFeeder.js");
 const MatchMaker = require("src/MatchMaker/MatchMaker.js");
 const subscribeTickers = require("src/subscribeTickers.js");
