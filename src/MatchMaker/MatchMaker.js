@@ -4,12 +4,11 @@ calls matchMultiple tx every time a new Order event received
 emmitted events:
 
 */
-require("@augmint/js/src/helpers/env.js");
-const log = require("@augmint/js/src/helpers/log.js")("MatchMaker");
-const EventEmitter = require("events");
-const promiseTimeout = require("@augmint/js/src/helpers/promiseTimeout.js");
+const { Augmint, utils } = require("@augmint/js");
+utils.loadEnv();
+const log = utils.logger("MatchMaker");
 
-const setExitHandler = require("@augmint/js/src/helpers/sigintHandler.js");
+const EventEmitter = require("events");
 const Exchange = require("@augmint/js/src/Exchange.js");
 
 class MatchMaker extends EventEmitter {
@@ -31,7 +30,7 @@ class MatchMaker extends EventEmitter {
         this.exchangeInstance = null;
         this.account = null;
 
-        setExitHandler(this._exit.bind(this), "MatchMaker");
+        utils.setExitHandler(this._exit.bind(this), "MatchMaker");
     }
 
     async init() {
@@ -92,7 +91,7 @@ class MatchMaker extends EventEmitter {
             this.queueNextCheck = true; // so _checkAndMatchOrders will call this fx again once finished
         } else {
             this.isProcessingOrderBook = true;
-            await promiseTimeout(process.env.MATCHMAKER_CHECKANDMATCHORDERS_TIMEOUT, this._checkAndMatchOrders()).catch(
+            await utils.promiseTimeout(process.env.MATCHMAKER_CHECKANDMATCHORDERS_TIMEOUT, this._checkAndMatchOrders()).catch(
                 error => {
                     // NB: it's not necessarily an error, ethereum network might be just slow.
                     log.error("checkAndMatchOrders failed with Error: ", error);

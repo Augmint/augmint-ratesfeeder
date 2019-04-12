@@ -1,6 +1,7 @@
-require("@augmint/js/src/helpers/env.js");
-const log = require("@augmint/js/src/helpers/log.js")("runFeeder");
-const EthereumConnection = require("@augmint/js/src/EthereumConnection.js");
+const { Augmint, utils } = require("@augmint/js");
+utils.loadEnv();
+const log = utils.logger("runFeeder");
+
 const RatesFeeder = require("src/RatesFeeder.js");
 const MatchMaker = require("src/MatchMaker/MatchMaker.js");
 const subscribeTickers = require("src/subscribeTickers.js");
@@ -11,7 +12,7 @@ log.info(
     NODE_ENV: ${process.env.NODE_ENV}
     LOG: ${process.env.LOG}`
 );
-const ethereumConnection = new EthereumConnection();
+const ethereumConnection = new Augmint.EthereumConnection();
 
 ethereumConnection.on("connected", onEthereumConnected);
 ethereumConnection.on("disconnecting", onEthereumDisconnecting);
@@ -62,70 +63,71 @@ ethereumConnection
     });
 
 /********* EthereumConnection event handlers (for logging)*****************/
+
 /* eslint-disable no-unused-vars */
-function onNewOrder(event, matchMaker) {
+function onNewOrder (event, matchMaker) {
     log.debug("New order id:", event.returnValues.orderId);
 }
 
-function onOrderFill(event, matchMaker) {
+function onOrderFill (event, matchMaker) {
     log.debug(
         `Order filled. buy id: ${event.returnValues.buyTokenOrderId} sell id: ${event.returnValues.sellTokenOrderId}`
     );
 }
 
-function onMatchMakerTxSuccess(nonce, confirmationNumber, receipt, matchMaker) {
+function onMatchMakerTxSuccess (nonce, confirmationNumber, receipt, matchMaker) {
     log.log(
         `    \u2713 checkAndMatchOrders() nonce: ${nonce}  txHash: ${
             receipt.transactionHash
-        } confirmed - received ${confirmationNumber} confirmations  `
+            } confirmed - received ${confirmationNumber} confirmations  `
     );
 }
 
 /*** EthereumConnection event handlers ****/
 
-function onEthereumConnected(ethereumConnection) {
+function onEthereumConnected (ethereumConnection) {
     // log.info("Ethereum connected.");
 }
 
-function onEthereumDisconnecting(signal, ethereumConnection) {
+function onEthereumDisconnecting (signal, ethereumConnection) {
     // log.info(`*** EthereumConnection received ${signal}. Stopping.`);
 }
 
-function onEthereumDisconnected(event, ethereumConnection) {
+function onEthereumDisconnected (event, ethereumConnection) {
     // log.info("Ethereum disconnected");
 }
 
 /********* TickerProvider event handlers *****************/
 
-function onTickerConnecting(data, tickerProvider) {
+function onTickerConnecting (data, tickerProvider) {
     //log.debug(tickerProvider.name, "connecting.", data);
 }
 
-function onTickerConnected(data, tickerProvider) {
+function onTickerConnected (data, tickerProvider) {
     log.info(`${tickerProvider.name} connected at ${data.url} httpPollInterval: ${data.httpPollInterval}`);
 }
 
-function onTickerDisconnecting(signal, tickerProvider) {
+function onTickerDisconnecting (signal, tickerProvider) {
     // log.info(`*** ${tickerProvider.name} received ${signal}. Disconnecting.`);
 }
 
-function onTickerDisconnected(tickerProvider) {
+function onTickerDisconnected (tickerProvider) {
     // log.info(tickerProvider.name, "disconnected.");
 }
 
-function onTickerReceived(newTicker, tickerProvider) {
+function onTickerReceived (newTicker, tickerProvider) {
     //log.debug(tickerProvider.name, "ticker received", JSON.stringify(newTicker));
 }
 
-function onTickerUpdated(newTicker, prevTicker, tickerProvider) {
+function onTickerUpdated (newTicker, prevTicker, tickerProvider) {
     // log.debug(tickerProvider.name, "ticker updated", JSON.stringify(newTicker), JSON.stringify(prevTicker));
 }
 
-function onTickerPriceChanged(newTicker, prevTicker, tickerProvider) {
+function onTickerPriceChanged (newTicker, prevTicker, tickerProvider) {
     // log.debug(tickerProvider.name, "ticker price changed", JSON.stringify(newTicker), JSON.stringify(prevTicker));
 }
 
-function onTickerProviderError(error, tickerProvider) {
+function onTickerProviderError (error, tickerProvider) {
     // NB: unique errors are logged from module with log.error
     log.debug(tickerProvider.name, "providerError", error);
 }
