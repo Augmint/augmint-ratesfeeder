@@ -2,7 +2,7 @@
  */
 const assert = require("chai").assert;
 const RatesFeeder = require("src/RatesFeeder.js");
-const EthereumConnection = require("src/augmintjs/EthereumConnection.js");
+const EthereumConnection = require("@augmint/js/src/EthereumConnection.js");
 const ethereumConnection = new EthereumConnection();
 
 const getStatus = () => "tickerProvider mock getStatus for test";
