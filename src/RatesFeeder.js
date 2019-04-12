@@ -14,16 +14,13 @@ TODO:
         web3.eth.transactionConfirmationBlocks: ${web3.eth.transactionConfirmationBlocks}
         web3.eth.transactionPollingTimeout: ${web3.eth.transactionPollingTimeout}
 */
-require("@augmint/js/src/helpers/env.js");
-const log = require("@augmint/js/src/helpers/log.js")("ratesFeeder");
-const setExitHandler = require("@augmint/js/src/helpers/sigintHandler.js");
-const promiseTimeout = require("@augmint/js/src/helpers/promiseTimeout.js");
-const AugmintToken = require("@augmint/js/src/AugmintToken.js");
-const Rates = require("@augmint/js/src/Rates.js");
-const { cost } = require("@augmint/js/src/gas.js");
+const { Augmint, utils } = require("@augmint/js");
+const log = utils.logger("ratesFeeder");
 
 const CCY = "EUR"; // only EUR is suported by TickerProvider providers ATM
 const LIVE_PRICE_DIFFERENCE_DECIMALS = 4; // rounding live price % difference to 2 decimals
+
+utils.loadEnv();
 
 const median = values => {
     values.sort((a, b) => a - b);
@@ -40,7 +37,7 @@ const median = values => {
 };
 
 class RatesFeeder {
-    constructor(ethereumConnection, tickers) {
+    constructor (ethereumConnection, tickers) {
         this.tickers = tickers; // array of TickerProvider objects
         // list of tickernames:
         this.tickerNames = this.tickers.reduce(
@@ -59,10 +56,10 @@ class RatesFeeder {
         this.lastTickerCheckResult = {};
         this.checkTickerPriceError = null; // to store last error and supress loggin repeating errors
 
-        setExitHandler(this.exit.bind(this), "RatesFeeder");
+        utils.setExitHandler(this.exit.bind(this), "RatesFeeder");
     }
 
-    async init() {
+    async init () {
         this.isStopping = false;
 
         this.account = process.env.RATESFEEDER_ETHEREUM_ACCOUNT;
@@ -71,8 +68,8 @@ class RatesFeeder {
             throw new Error("Invalid RATESFEEDER_ETHEREUM_ACCOUNT: " + this.account);
         }
 
-        this.rates = new Rates();
-        this.augmintToken = new AugmintToken();
+        this.rates = new Augmint.Rates();
+        this.augmintToken = new Augmint.Token();
 
         await Promise.all([
             this.rates.connect(this.ethereumConnection),
@@ -94,7 +91,7 @@ class RatesFeeder {
             RATESFEEDER_ETHEREUM_ACCOUNT: ${process.env.RATESFEEDER_ETHEREUM_ACCOUNT}
             RATESFEEDER_ETHEREUM_PRIVATE_KEY: ${
                 process.env.RATESFEEDER_ETHEREUM_PRIVATE_KEY ? "[secret]" : "not provided"
-            }
+                }
             RATESFEEDER_LIVE_PRICE_THRESHOLD_PT: ${process.env.RATESFEEDER_LIVE_PRICE_THRESHOLD_PT}
             RATESFEEDER_SETRATE_TX_TIMEOUT: ${process.env.RATESFEEDER_SETRATE_TX_TIMEOUT}
             RATESFEEDER_CHECK_TICKER_PRICE_INTERVAL: ${process.env.RATESFEEDER_CHECK_TICKER_PRICE_INTERVAL}
@@ -106,7 +103,7 @@ class RatesFeeder {
 
     // check current price from different exchanges and update Augmint price on chain if difference is beyond threshold
     // filters out bad prices, errors, and returns with the avarage
-    async checkTickerPrice() {
+    async checkTickerPrice () {
         try {
             log.debug("==> checkTickerPrice() tickers:");
 
@@ -129,16 +126,16 @@ class RatesFeeder {
                 const livePriceDifference =
                     livePrice > 0
                         ? parseFloat(
-                              (Math.abs(livePrice - currentAugmintRate.rate) / currentAugmintRate.rate).toFixed(
-                                  LIVE_PRICE_DIFFERENCE_DECIMALS
-                              )
-                          )
+                        (Math.abs(livePrice - currentAugmintRate.rate) / currentAugmintRate.rate).toFixed(
+                            LIVE_PRICE_DIFFERENCE_DECIMALS
+                        )
+                        )
                         : null;
 
                 log.debug(
                     `    checkTickerPrice() currentAugmintRate[${CCY}]: ${
                         currentAugmintRate.rate
-                    } livePrice: ${livePrice} livePriceDifference: ${(livePriceDifference * 100).toFixed(2)} %`
+                        } livePrice: ${livePrice} livePriceDifference: ${(livePriceDifference * 100).toFixed(2)} %`
                 );
 
                 const tickersInfo = this.tickers.map(t => t.getStatus());
@@ -152,7 +149,7 @@ class RatesFeeder {
 
                 if (livePrice > 0) {
                     if (livePriceDifference * 100 > parseFloat(process.env.RATESFEEDER_LIVE_PRICE_THRESHOLD_PT)) {
-                        await promiseTimeout(
+                        await utils.promiseTimeout(
                             process.env.RATESFEEDER_SETRATE_TX_TIMEOUT,
                             this.updatePrice(CCY, livePrice)
                         ).catch(error => {
@@ -188,7 +185,7 @@ class RatesFeeder {
         }
     }
 
-    calculateAugmintPrice(tickers) {
+    calculateAugmintPrice (tickers) {
         // ignore 0 or null prices (exchange down or no price info yet)
         const prices = tickers
             .filter(ticker => ticker.lastTicker && ticker.lastTicker.lastTradePrice > 0)
@@ -202,7 +199,7 @@ class RatesFeeder {
 
     /* Update price on chain.
         price provided rounded to AugmintToken.decimals first */
-    async updatePrice(currency, price) {
+    async updatePrice (currency, price) {
         try {
             const setRateTx = this.rates.getSetRateTx(currency, price);
             const encodedABI = setRateTx.encodeABI();
@@ -210,7 +207,7 @@ class RatesFeeder {
             const txToSign = {
                 from: this.account,
                 to: this.rates.address,
-                gas: cost.SET_RATE_GAS_LIMIT,
+                gas: Augmint.gas.cost.SET_RATE_GAS_LIMIT,
                 data: encodedABI
             };
 
@@ -222,7 +219,9 @@ class RatesFeeder {
             log.log(
                 `==> updatePrice() nonce: ${nonce} sending setRate(${currency}, ${price}). currentAugmintRate[${CCY}]: ${
                     this.lastTickerCheckResult[CCY] ? this.lastTickerCheckResult[CCY].currentAugmintRate.rate : "null"
-                } livePrice: ${this.lastTickerCheckResult[CCY] ? this.lastTickerCheckResult[CCY].livePrice : "null"}`
+                    } livePrice: ${this.lastTickerCheckResult[CCY]
+                    ? this.lastTickerCheckResult[CCY].livePrice
+                    : "null"}`
             );
 
             const tx = this.web3.eth.sendSignedTransaction(signedTx.rawTransaction);
@@ -235,7 +234,7 @@ class RatesFeeder {
                     log.debug(
                         `    updatePrice() nonce: ${nonce}  txHash: ${
                             receipt.transactionHash
-                        } receipt received.  gasUsed: ${receipt.gasUsed}`
+                            } receipt received.  gasUsed: ${receipt.gasUsed}`
                     );
                 })
                 .on("confirmation", (confirmationNumber, receipt) => {
@@ -243,13 +242,13 @@ class RatesFeeder {
                         log.log(
                             `    \u2713 updatePrice() nonce: ${nonce}  txHash: ${
                                 receipt.transactionHash
-                            } confirmed: setRate(${currency}, ${price}) - received ${confirmationNumber} confirmations  `
+                                } confirmed: setRate(${currency}, ${price}) - received ${confirmationNumber} confirmations  `
                         );
                     } else {
                         log.debug(
                             `    updatePrice() nonce: ${nonce}  txHash: ${
                                 receipt.transactionHash
-                            } Confirmation #${confirmationNumber} received.`
+                                } Confirmation #${confirmationNumber} received.`
                         );
                     }
                 })
@@ -274,17 +273,17 @@ class RatesFeeder {
         }
     }
 
-    async stop() {
+    async stop () {
         this.isStopping = true;
         clearTimeout(this.checkTickerPriceTimer);
     }
 
-    async exit(signal) {
+    async exit (signal) {
         log.info(`*** ratesFeeder Received ${signal}. Stopping.`);
         await this.stop();
     }
 
-    getStatus() {
+    getStatus () {
         const status = {
             isInitialised: this.isInitialised,
             account: this.account,
