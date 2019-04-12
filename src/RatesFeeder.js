@@ -14,14 +14,13 @@ TODO:
         web3.eth.transactionConfirmationBlocks: ${web3.eth.transactionConfirmationBlocks}
         web3.eth.transactionPollingTimeout: ${web3.eth.transactionPollingTimeout}
 */
-
-require("src/augmintjs/helpers/env.js");
-const log = require("src/augmintjs/helpers/log.js")("ratesFeeder");
-const setExitHandler = require("src/augmintjs/helpers/sigintHandler.js");
-const promiseTimeout = require("src/augmintjs/helpers/promiseTimeout.js");
-const AugmintToken = require("src/augmintjs/AugmintToken.js");
-const Rates = require("src/augmintjs/Rates.js");
-const { cost } = require("src/augmintjs/gas.js");
+require("@augmint/js/src/helpers/env.js");
+const log = require("@augmint/js/src/helpers/log.js")("ratesFeeder");
+const setExitHandler = require("@augmint/js/src/helpers/sigintHandler.js");
+const promiseTimeout = require("@augmint/js/src/helpers/promiseTimeout.js");
+const AugmintToken = require("@augmint/js/src/AugmintToken.js");
+const Rates = require("@augmint/js/src/Rates.js");
+const { cost } = require("@augmint/js/src/gas.js");
 
 const CCY = "EUR"; // only EUR is suported by TickerProvider providers ATM
 const LIVE_PRICE_DIFFERENCE_DECIMALS = 4; // rounding live price % difference to 2 decimals

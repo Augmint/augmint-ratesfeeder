@@ -1,4 +1,4 @@
-require("src/augmintjs/helpers/env.js");
+require("@augmint/js/src/helpers/env.js");
 // const log = require("src/augmintjs/helpers/log.js")("statusApi");
 
 const httplogger = require("morgan");

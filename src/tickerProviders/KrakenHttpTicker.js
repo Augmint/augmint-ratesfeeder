@@ -3,7 +3,6 @@
  NB: Kraken's websocket has vwaps for different time periods than 24hrs
 */
 
-const log = require("src/augmintjs/helpers/log.js")("TickerProvider");
 const BaseHttpTickerProvider = require("./BaseHttpTickerProvider.js");
 
 class KrakenHttpTicker extends BaseHttpTickerProvider {
