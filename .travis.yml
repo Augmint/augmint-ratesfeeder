@@ -20,7 +20,8 @@ install:
         fi
 before_script:
     - greenkeeper-lockfile-update
-    - yarn ganache:start > /dev/null & wait-on http-get://localhost:8545
+    - yarn ganache:start > /dev/null &
+    - wait-on tcp://localhost:8545 # ganache
 script:
     - yarn test
 after_script: greenkeeper-lockfile-upload
