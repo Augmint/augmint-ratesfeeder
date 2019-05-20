@@ -1,7 +1,16 @@
-require("@augmint/js/src/helpers/env.js");
-const log = require("@augmint/js/src/helpers/log.js")("statusApi");
-const promiseTimeout = require("@augmint/js/src/helpers/promiseTimeout.js");
-const setExitHandler = require("@augmint/js/src/helpers/sigintHandler.js");
+const loadEnv = require("src/helpers/loadEnv.js");
+const { utils } = require("@augmint/js");
+
+const config = loadEnv();
+
+if (config.LOG) {
+    utils.logger.level = config.LOG;
+}
+const log = utils.logger("statusApi");
+
+const setExitHandler = utils.setExitHandler;
+const promiseTimeout = utils.promiseTimeout;
+
 const app = require("./app.js");
 const http = require("http");
 let httpServer;

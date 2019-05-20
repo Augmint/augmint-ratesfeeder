@@ -1,5 +1,13 @@
-require("@augmint/js/src/helpers/env.js");
-const log = require("@augmint/js/src/helpers/log.js")("TickerProvider");
+const loadEnv = require("src/helpers/loadEnv.js");
+const { utils } = require("@augmint/js");
+
+const config = loadEnv();
+
+if (config.LOG) {
+    utils.logger.level = config.LOG;
+}
+const log = utils.logger("TickerProvider");
+
 const BaseTickerProvider = require("./BaseTickerProvider.js");
 const fetch = require("node-fetch");
 

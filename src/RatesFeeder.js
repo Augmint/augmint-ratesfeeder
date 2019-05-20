@@ -14,13 +14,19 @@ TODO:
         web3.eth.transactionConfirmationBlocks: ${web3.eth.transactionConfirmationBlocks}
         web3.eth.transactionPollingTimeout: ${web3.eth.transactionPollingTimeout}
 */
-require("@augmint/js/src/helpers/env.js");
-const log = require("@augmint/js/src/helpers/log.js")("ratesFeeder");
-const setExitHandler = require("@augmint/js/src/helpers/sigintHandler.js");
-const promiseTimeout = require("@augmint/js/src/helpers/promiseTimeout.js");
-const AugmintToken = require("@augmint/js/src/AugmintToken.js");
-const Rates = require("@augmint/js/src/Rates.js");
-const { cost } = require("@augmint/js/src/gas.js");
+const loadEnv = require("src/helpers/loadEnv.js");
+const { Augmint, utils } = require("@augmint/js");
+
+const config = loadEnv();
+
+if (config.LOG) {
+    utils.logger.level = config.LOG;
+}
+const log = utils.logger("runFeeder");
+
+const setExitHandler = utils.setExitHandler;
+const promiseTimeout = utils.promiseTimeout;
+const cost = Augmint.gas;
 
 const CCY = "EUR"; // only EUR is suported by TickerProvider providers ATM
 const LIVE_PRICE_DIFFERENCE_DECIMALS = 4; // rounding live price % difference to 2 decimals
@@ -47,8 +53,8 @@ class RatesFeeder {
             (accum, ticker, idx) => (idx == 0 ? ticker.name : accum + ", " + ticker.name),
             ""
         );
-        this.ethereumConnection = ethereumConnection;
-        this.web3 = ethereumConnection.web3;
+        this.ethereumConnection = null;
+        this.web3 = null;
         this.isInitialised = false;
         this.isStopping = false;
         this.decimals = null;
@@ -63,7 +69,14 @@ class RatesFeeder {
     }
 
     async init() {
+        const myAugmint = await Augmint.create(config);
+
         this.isStopping = false;
+
+        this.rates = myAugmint.rates;
+        this.augmintToken = myAugmint.token;
+        this.ethereumConnection = myAugmint.ethereumConnection;
+        this.web3 = this.ethereumConnection.web3;
 
         this.account = process.env.RATESFEEDER_ETHEREUM_ACCOUNT;
 
@@ -71,13 +84,6 @@ class RatesFeeder {
             throw new Error("Invalid RATESFEEDER_ETHEREUM_ACCOUNT: " + this.account);
         }
 
-        this.rates = new Rates();
-        this.augmintToken = new AugmintToken();
-
-        await Promise.all([
-            this.rates.connect(this.ethereumConnection),
-            this.augmintToken.connect(this.ethereumConnection)
-        ]);
 
         this.decimals = this.augmintToken.decimals;
 

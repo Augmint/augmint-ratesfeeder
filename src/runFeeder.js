@@ -1,6 +1,14 @@
-require("@augmint/js/src/helpers/env.js");
-const log = require("@augmint/js/src/helpers/log.js")("runFeeder");
-const EthereumConnection = require("@augmint/js/src/EthereumConnection.js");
+const loadEnv = require("src/helpers/loadEnv.js");
+const { Augmint, utils } = require("@augmint/js");
+
+const config = loadEnv();
+
+if (config.LOG) {
+    utils.logger.level = config.LOG;
+}
+
+const log = utils.logger("runFeeder");
+const EthereumConnection = Augmint.EthereumConnection;
 const RatesFeeder = require("src/RatesFeeder.js");
 const MatchMaker = require("src/MatchMaker/MatchMaker.js");
 const subscribeTickers = require("src/subscribeTickers.js");
@@ -11,7 +19,7 @@ log.info(
     NODE_ENV: ${process.env.NODE_ENV}
     LOG: ${process.env.LOG}`
 );
-const ethereumConnection = new EthereumConnection();
+const ethereumConnection = new EthereumConnection(config);
 
 ethereumConnection.on("connected", onEthereumConnected);
 ethereumConnection.on("disconnecting", onEthereumDisconnecting);

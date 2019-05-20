@@ -4,19 +4,28 @@ calls matchMultiple tx every time a new Order event received
 emmitted events:
 
 */
-require("@augmint/js/src/helpers/env.js");
-const log = require("@augmint/js/src/helpers/log.js")("MatchMaker");
-const EventEmitter = require("events");
-const promiseTimeout = require("@augmint/js/src/helpers/promiseTimeout.js");
+const loadEnv = require("src/helpers/loadEnv.js");
+const { Augmint, utils } = require("@augmint/js");
 
-const setExitHandler = require("@augmint/js/src/helpers/sigintHandler.js");
+const config = loadEnv();
+
+if (config.LOG) {
+    utils.logger.level = config.LOG;
+}
+const log = utils.logger("MatchMaker");
+
+const setExitHandler = utils.setExitHandler;
+const promiseTimeout = utils.promiseTimeout;
+
+const EventEmitter = require("events");
 const Exchange = require("@augmint/js/src/Exchange.js");
 
 class MatchMaker extends EventEmitter {
-    constructor(ethereumConnection) {
+    constructor() {
         super();
-        this.ethereumConnection = ethereumConnection;
-        this.web3 = this.ethereumConnection.web3;
+        this.augmint = null;
+        this.ethereumConnection = null;
+        this.web3 = null;
         this.isInitialised = false;
 
         // flag if processing is going on to avoid sending a
@@ -35,6 +44,11 @@ class MatchMaker extends EventEmitter {
     }
 
     async init() {
+        const myAugmint = await Augmint.create(config);
+        this.ethereumConnection = myAugmint.ethereumConnection;
+        this.web3 = myAugmint.ethereumConnection.web3;
+        this.augmint = myAugmint;
+
         this.account = process.env.MATCHMAKER_ETHEREUM_ACCOUNT;
 
         if (!this.web3.utils.isAddress(this.account)) {
@@ -73,8 +87,7 @@ class MatchMaker extends EventEmitter {
 
     async onEthereumConnected() {
         if (!this.exchange) {
-            this.exchange = new Exchange();
-            this.exchangeInstance = await this.exchange.connect(this.ethereumConnection);
+            this.exchange = this.augmint.exchange;
         }
 
         // subscribing on first connection OR resubscribing in case of reconnection - check if latter is needed in newer web3 releases: https://github.com/ethereum/web3.js/pull/1966
