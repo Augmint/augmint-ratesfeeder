@@ -2,7 +2,8 @@
  */
 const assert = require("chai").assert;
 const baseHelpers = require("./helpers/base.js");
-const EthereumConnection = require("@augmint/js/src/EthereumConnection.js");
+const { Augmint } = require("@augmint/js");
+const EthereumConnection = Augmint.EthereumConnection;
 const ethereumConnection = new EthereumConnection();
 const RatesFeeder = require("src/RatesFeeder.js");
 

@@ -12,7 +12,7 @@
     "yarn": "1.15.2"
   },
   "dependencies": {
-    "@augmint/js": "0.0.2",
+    "@augmint/js": "0.3.1",
     "bignumber.js": "5.0.0",
     "cross-env": "5.2.0",
     "dotenv": "7.0.0",
@@ -40,8 +40,8 @@
     "start:production": "yarn cross-env NODE_ENV=production NODE_PATH=. node ./src/runFeeder.js",
     "test": "yarn cross-env NODE_ENV=test NODE_PATH=. mocha '{src/**/*.test.js,test/**/*.js}' --exit",
     "test:augmintjs": "yarn cross-env NODE_ENV=test NODE_PATH=. mocha 'src/augmintjs/**/*.test.js' --exit",
-    "ganache:start": "docker start ganache || docker run --init --name ganache -p 8545:8545 augmint/contracts:v1.0.4 --db ./dockerLocalchaindb --gasLimit 0x47D5DE --gasPrice 1000000000 --networkId 999 -m \"hello build tongue rack parade express shine salute glare rate spice stock\"",
-    "ganache:stop": "docker stop ganache"
+    "ganache:start": "yarn augmint-cli ganache start --blockTime 1",
+    "ganache:run": "yarn augmint-cli ganache run --blockTime 1"
   },
   "greenkeeper": {
     "ignore": [
