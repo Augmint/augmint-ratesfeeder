@@ -39,7 +39,6 @@
     "start": "yarn cross-env NODE_ENV=development NODE_PATH=. node ./src/runFeeder.js",
     "start:production": "yarn cross-env NODE_ENV=production NODE_PATH=. node ./src/runFeeder.js",
     "test": "yarn cross-env NODE_ENV=test NODE_PATH=. mocha '{src/**/*.test.js,test/**/*.js}' --exit",
-    "test:augmintjs": "yarn cross-env NODE_ENV=test NODE_PATH=. mocha 'src/augmintjs/**/*.test.js' --exit",
     "ganache:start": "yarn augmint-cli ganache start --blockTime 1",
     "ganache:run": "yarn augmint-cli ganache run --blockTime 1"
   },
