@@ -2,13 +2,19 @@
 # yarn lockfile v1
 
 
-"@augmint/js@0.0.2":
-  version "0.0.2"
-  resolved "https://registry.yarnpkg.com/@augmint/js/-/js-0.0.2.tgz#f62dc4224b2b9827a67453e21ddcd24958cf3e07"
-  integrity sha512-JMqYtp5BnYHgoj+AnpN5vUzl9n7n3io0Rtox3kwdfOLhjl6V+3yg8LSv3ywicfLWQ9Y9N/yFPQZDEcTJnpu7MQ==
+"@augmint/contracts@1.1.1":
+  version "1.1.1"
+  resolved "https://registry.yarnpkg.com/@augmint/contracts/-/contracts-1.1.1.tgz#2b93d815ad803e678cbe61a152538347fccbd461"
+  integrity sha512-peiemRgbTvI8rptBVwFMnp6beqNC4naUbPc1IXzUX+Vx2iRCRrYgtXTOSl0vNuw32oqe9schvWwvj0hgQNNdUg==
+
+"@augmint/js@0.3.6":
+  version "0.3.6"
+  resolved "https://registry.yarnpkg.com/@augmint/js/-/js-0.3.6.tgz#145d818e0f33beefb1f4c500f25745a4073d4aa0"
+  integrity sha512-iJME5O/HBZqBw7pMkiHdqxzOI9B3sCt0ablqOJVkh/IhKJiRbCEemONhu2r1bbtQr/slc99+Xrdbx+rVUW8fCg==
   dependencies:
-    bignumber.js "5.0.0"
-    dotenv "7.0.0"
+    "@augmint/contracts" "1.1.1"
+    bn.js "5.0.0"
+    dotenv "8.0.0"
     ulog "2.0.0-beta.6"
     web3 "1.0.0-beta.36"
 
@@ -258,6 +264,11 @@ bn.js@4.11.6:
   version "4.11.6"
   resolved "https://registry.yarnpkg.com/bn.js/-/bn.js-4.11.6.tgz#53344adb14617a13f6e8dd2ce28905d1c0ba3215"
   integrity sha1-UzRK2xRhehP26N0s4okF0cC6MhU=
+
+bn.js@5.0.0:
+  version "5.0.0"
+  resolved "https://registry.yarnpkg.com/bn.js/-/bn.js-5.0.0.tgz#5c3d398021b3ddb548c1296a16f857e908f35c70"
+  integrity sha512-bVwDX8AF+72fIUNuARelKAlQUNtPOfG2fRxorbVvFk4zpHbqLrPdOGfVg5vrKwVzLLePqPBiATaOZNELQzmS0A==
 
 bn.js@^4.0.0, bn.js@^4.1.0, bn.js@^4.1.1, bn.js@^4.11.6, bn.js@^4.4.0:
   version "4.11.8"
@@ -812,6 +823,11 @@ dotenv@7.0.0:
   version "7.0.0"
   resolved "https://registry.yarnpkg.com/dotenv/-/dotenv-7.0.0.tgz#a2be3cd52736673206e8a85fb5210eea29628e7c"
   integrity sha512-M3NhsLbV1i6HuGzBUH8vXrtxOk+tWmzWKDMbAVSUp3Zsjm7ywFeuwrUXhmhQyRK1q5B5GGy7hcXPbj3bnfZg2g==
+
+dotenv@8.0.0:
+  version "8.0.0"
+  resolved "https://registry.yarnpkg.com/dotenv/-/dotenv-8.0.0.tgz#ed310c165b4e8a97bb745b0a9d99c31bda566440"
+  integrity sha512-30xVGqjLjiUOArT4+M5q9sYdvuR4riM6yK9wMcas9Vbp6zZa+ocC9dp6QoftuhTPhFAiLK/0C5Ni2nou/Bk8lg==
 
 duplexer3@^0.1.4:
   version "0.1.4"
