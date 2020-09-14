@@ -16,7 +16,7 @@
     "bignumber.js": "5.0.0",
     "cross-env": "5.2.0",
     "dotenv": "7.0.0",
-    "express": "4.16.4",
+    "express": "4.17.1",
     "http-errors": "1.7.2",
     "morgan": "1.9.1",
     "node-fetch": "2.3.0",
