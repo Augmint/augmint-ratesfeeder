@@ -1,7 +1,7 @@
-require("src/augmintjs/helpers/env.js");
-const log = require("src/augmintjs/helpers/log.js")("statusApi");
-const promiseTimeout = require("src/augmintjs/helpers/promiseTimeout.js");
-const setExitHandler = require("src/augmintjs/helpers/sigintHandler.js");
+require("@augmint/js/src/helpers/env.js");
+const log = require("@augmint/js/src/helpers/log.js")("statusApi");
+const promiseTimeout = require("@augmint/js/src/helpers/promiseTimeout.js");
+const setExitHandler = require("@augmint/js/src/helpers/sigintHandler.js");
 const app = require("./app.js");
 const http = require("http");
 let httpServer;
@@ -58,16 +58,16 @@ function start(ratesFeeder) {
 
         // handle specific listen errors with friendly messages
         switch (error.code) {
-        case "EACCES":
-            log.error("Error: Can't start statusApi server:" + bind + " requires elevated privileges");
-            process.exit(1);
-            break;
-        case "EADDRINUSE":
-            log.error("Error: Can't start statusApi server:" + bind + " is already in use");
-            process.exit(1);
-            break;
-        default:
-            throw error;
+            case "EACCES":
+                log.error("Error: Can't start statusApi server:" + bind + " requires elevated privileges");
+                process.exit(1);
+                break;
+            case "EADDRINUSE":
+                log.error("Error: Can't start statusApi server:" + bind + " is already in use");
+                process.exit(1);
+                break;
+            default:
+                throw error;
         }
     }
 

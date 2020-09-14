@@ -1,6 +1,6 @@
-const log = require("src/augmintjs/helpers/log.js")("TickerProvider");
+const log = require("@augmint/js/src/helpers/log.js")("TickerProvider");
 const EventEmitter = require("events");
-const setExitHandler = require("src/augmintjs/helpers/sigintHandler.js");
+const setExitHandler = require("@augmint/js/src/helpers/sigintHandler.js");
 
 class BaseTickerProvider extends EventEmitter {
     // for each provider implement a  getter for name
