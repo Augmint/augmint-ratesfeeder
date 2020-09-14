@@ -1,6 +1,7 @@
-const log = require("@augmint/js/src/helpers/log.js")("TickerProvider");
+const { utils } = require("@augmint/js");
+utils.loadEnv();
+
 const EventEmitter = require("events");
-const setExitHandler = require("@augmint/js/src/helpers/sigintHandler.js");
 
 class BaseTickerProvider extends EventEmitter {
     // for each provider implement a  getter for name
@@ -22,7 +23,7 @@ class BaseTickerProvider extends EventEmitter {
     }
 
     async connect(data) {
-        setExitHandler(this._exit.bind(this), this.name);
+        utils.setExitHandler(this._exit.bind(this), this.name);
         this.emit("connecting", data, this);
         this.on("tickerreceived", this._onTickerReceived.bind(this)); // emit from provider
 
